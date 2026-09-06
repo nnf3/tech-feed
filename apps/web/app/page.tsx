@@ -1,7 +1,9 @@
 import { refreshFeed } from "./actions";
 import { Header } from "@/components/Header";
+import { Tags } from "@/components/Tags";
 import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
+import { getProfile } from "@/lib/profiles";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function HomePage({
 }) {
   const { q = "", auth_error: authError = "" } = await searchParams;
   const session = await getSession();
+  const interest = session ? (await getProfile(session.sub)).interest_tags : [];
   let articles = [] as Awaited<ReturnType<typeof listArticles>>;
   let error = "";
 
@@ -70,7 +73,7 @@ export default async function HomePage({
               </div>
               <h2>{article.title}</h2>
               {article.summary ? <p>{article.summary}</p> : null}
-              {article.tags?.length ? <p className="tags">{article.tags.join(" · ")}</p> : null}
+              <Tags tags={article.tags ?? []} interest={interest} />
             </a>
           ))}
         </section>

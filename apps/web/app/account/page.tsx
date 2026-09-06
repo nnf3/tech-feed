@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { saveProfile } from "@/app/actions";
 import { Header } from "@/components/Header";
+import { Tags } from "@/components/Tags";
 import { authConfig } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
 import { getProfile } from "@/lib/profiles";
@@ -68,6 +69,7 @@ export default async function AccountPage({
               placeholder="go, rust, kubernetes"
               autoComplete="off"
             />
+            <Tags tags={profile.interest_tags} interest={profile.interest_tags} />
           </label>
           <label>
             <span>除外タグ</span>
@@ -78,6 +80,7 @@ export default async function AccountPage({
               placeholder="beginner, poem"
               autoComplete="off"
             />
+            <Tags tags={profile.exclude_tags} />
           </label>
           <div className="account-actions">
             <button type="submit">プロフィールを保存</button>
