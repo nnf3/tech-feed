@@ -52,8 +52,9 @@ func main() {
 	list := usecase.NewListFeed(store, db, ranking.PublishedAt{})
 	users := usecase.NewUsers(db)
 	profiles := usecase.NewProfiles(db, db)
+	bookmarks := usecase.NewBookmarks(db, db)
 
-	srv := httpserver.New(list, users, profiles, internalToken)
+	srv := httpserver.New(list, users, profiles, bookmarks, internalToken)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)

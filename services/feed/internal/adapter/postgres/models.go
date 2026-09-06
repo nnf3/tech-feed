@@ -51,6 +51,38 @@ func (r profileRecord) toDomain() domain.Profile {
 	}
 }
 
+type bookmarkRecord struct {
+	UserID    string    `gorm:"column:user_id;primaryKey"`
+	ArticleID string    `gorm:"column:article_id;primaryKey"`
+	URL       string    `gorm:"column:url"`
+	Title     string    `gorm:"column:title"`
+	Source    string    `gorm:"column:source"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func (bookmarkRecord) TableName() string { return "bookmarks" }
+
+func bookmarkFromDomain(bookmark domain.Bookmark) bookmarkRecord {
+	return bookmarkRecord{
+		UserID:    bookmark.UserID,
+		ArticleID: bookmark.ArticleID,
+		URL:       bookmark.URL,
+		Title:     bookmark.Title,
+		Source:    bookmark.Source,
+	}
+}
+
+func (r bookmarkRecord) toDomain() domain.Bookmark {
+	return domain.Bookmark{
+		UserID:    r.UserID,
+		ArticleID: r.ArticleID,
+		URL:       r.URL,
+		Title:     r.Title,
+		Source:    r.Source,
+		CreatedAt: r.CreatedAt,
+	}
+}
+
 func nonNilTags(tags []string) []string {
 	if tags == nil {
 		return []string{}

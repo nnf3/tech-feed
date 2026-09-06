@@ -22,7 +22,7 @@ docker compose up --build
 ./scripts/register-idp-client.sh
 ```
 
-IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` に戻ります。ユーザーは feed が Postgres の `users` に保存します。`/me` と `/me/profile`、一覧のパーソナライズは BFF の `FEED_INTERNAL_TOKEN` と `X-User-ID` が必要です。ユーザー ID はパスやクエリには載せません。
+IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` に戻ります。ユーザーは feed が Postgres の `users` に保存します。`/me` と `/me/profile`、`/me/bookmarks`、一覧のパーソナライズは BFF の `FEED_INTERNAL_TOKEN` と `X-User-ID` が必要です。ユーザー ID はパスやクエリには載せません。ブックマークは記事のスナップショット（URL / タイトル / ソース）を Postgres に残します。
 
 `compose.yaml` は開発用です。Go と Next.js はボリュームマウントしているので、ソースを保存すればコンテナ内で再ビルド / ホットリロードされます。`go.mod` や `package.json` を変えたときだけ `docker compose up --build` し直してください。本番向けの焼き込みイメージは各ディレクトリの `Dockerfile` です。
 

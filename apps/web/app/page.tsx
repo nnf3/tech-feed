@@ -1,8 +1,10 @@
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { FeedMeta } from "@/components/FeedMeta";
 import { Header } from "@/components/Header";
 import { HighlightedText } from "@/components/HighlightedText";
 import { Tags } from "@/components/Tags";
 import { getSession } from "@/lib/auth/session";
+import { listBookmarks } from "@/lib/bookmarks";
 import { listArticles } from "@/lib/feed";
 import { getProfile } from "@/lib/profiles";
 
@@ -23,13 +25,35 @@ function formatDate(value: string) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string; auth_error?: string; profile_error?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    tag?: string;
+    auth_error?: string;
+    profile_error?: string;
+    bookmark_error?: string;
+  }>;
 }) {
-  const { q = "", tag = "", auth_error: authError = "", profile_error: profileError = "" } = await searchParams;
+  const {
+    q = "",
+    tag = "",
+    auth_error: authError = "",
+    profile_error: profileError = "",
+    bookmark_error: bookmarkError = "",
+  } = await searchParams;
   const session = await getSession();
   const profile = session ? await getProfile(session.sub) : null;
   const interest = profile?.interest_tags ?? [];
   const exclude = profile?.exclude_tags ?? [];
+  const saved = new Set<string>();
+  if (session) {
+    try {
+      for (const item of await listBookmarks(session.sub)) {
+        saved.add(item.article_id);
+      }
+    } catch {
+      // 一覧は出して、保存状態だけ空にする
+    }
+  }
   let articles = [] as Awaited<ReturnType<typeof listArticles>>;
   let error = "";
 
@@ -57,6 +81,7 @@ export default async function HomePage({
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
       {profileError ? <p className="meta">プロフィールを更新できませんでした: {profileError}</p> : null}
+      {bookmarkError ? <p className="meta">ブックマークを更新できませんでした: {bookmarkError}</p> : null}
       <FeedMeta
         error={error}
         count={articles.length}
@@ -75,6 +100,17 @@ export default async function HomePage({
         <section className="list">
           {articles.map((article) => (
             <article key={article.id} className="card">
+              {session ? (
+                <BookmarkButton
+                  saved={saved.has(article.id)}
+                  article={{
+                    article_id: article.id,
+                    url: article.url,
+                    title: article.title,
+                    source: article.source,
+                  }}
+                />
+              ) : null}
               <a className="card-body" href={article.url} target="_blank" rel="noreferrer">
                 <div className="card-top">
                   <span className={`source source-${article.source}`}>{article.source}</span>

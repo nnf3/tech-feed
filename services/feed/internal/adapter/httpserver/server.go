@@ -20,11 +20,12 @@ type Server struct {
 	list          articleLister
 	users         *usecase.Users
 	profiles      *usecase.Profiles
+	bookmarks     *usecase.Bookmarks
 	internalToken string
 }
 
-func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles, internalToken string) *Server {
-	return &Server{list: list, users: users, profiles: profiles, internalToken: internalToken}
+func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles, bookmarks *usecase.Bookmarks, internalToken string) *Server {
+	return &Server{list: list, users: users, profiles: profiles, bookmarks: bookmarks, internalToken: internalToken}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -35,6 +36,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /me", s.upsertUser)
 	mux.HandleFunc("GET /me/profile", s.getProfile)
 	mux.HandleFunc("PUT /me/profile", s.upsertProfile)
+	mux.HandleFunc("GET /me/bookmarks", s.listBookmarks)
+	mux.HandleFunc("PUT /me/bookmarks", s.addBookmark)
+	mux.HandleFunc("DELETE /me/bookmarks/{article_id}", s.removeBookmark)
 	return mux
 }
 
@@ -147,6 +151,63 @@ func (s *Server) upsertProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, profile)
+}
+
+func (s *Server) listBookmarks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	items, err := s.bookmarks.List(ctx, userID)
+	if err != nil {
+		writeUsecaseError(w, "list bookmarks", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"bookmarks": items})
+}
+
+func (s *Server) addBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	var body domain.Bookmark
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	body.UserID = userID
+
+	item, err := s.bookmarks.Add(ctx, body)
+	if err != nil {
+		writeUsecaseError(w, "add bookmark", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) removeBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := s.bookmarks.Remove(ctx, userID, r.PathValue("article_id")); err != nil {
+		writeUsecaseError(w, "remove bookmark", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func writeUsecaseError(w http.ResponseWriter, op string, err error) {
