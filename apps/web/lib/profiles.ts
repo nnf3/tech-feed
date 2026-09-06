@@ -6,6 +6,48 @@ export type Profile = {
   exclude_tags: string[];
 };
 
+function tagKey(tag: string) {
+  return tag.trim().toLowerCase();
+}
+
+function withoutTag(tags: string[], tag: string) {
+  const key = tagKey(tag);
+  return tags.filter((item) => tagKey(item) !== key);
+}
+
+function withTag(tags: string[], tag: string) {
+  const key = tagKey(tag);
+  if (!key || tags.some((item) => tagKey(item) === key)) {
+    return tags;
+  }
+  return [...tags, key];
+}
+
+export function toggleTagLists(
+  interest: string[],
+  exclude: string[],
+  tag: string,
+  kind: "interest" | "exclude",
+) {
+  const key = tagKey(tag);
+  if (!key) {
+    return { interest, exclude };
+  }
+  const inInterest = interest.some((item) => tagKey(item) === key);
+  const inExclude = exclude.some((item) => tagKey(item) === key);
+
+  if (kind === "interest") {
+    if (inInterest) {
+      return { interest: withoutTag(interest, key), exclude };
+    }
+    return { interest: withTag(interest, key), exclude: withoutTag(exclude, key) };
+  }
+  if (inExclude) {
+    return { interest, exclude: withoutTag(exclude, key) };
+  }
+  return { interest: withoutTag(interest, key), exclude: withTag(exclude, key) };
+}
+
 export function parseTags(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string") {
     return [];

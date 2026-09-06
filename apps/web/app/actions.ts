@@ -3,7 +3,28 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { parseTags, upsertProfile } from "@/lib/profiles";
+import { getProfile, parseTags, toggleTagLists, upsertProfile } from "@/lib/profiles";
+
+export async function toggleProfileTag(tag: string, kind: "interest" | "exclude") {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+
+  try {
+    const profile = await getProfile(session.sub);
+    const next = toggleTagLists(profile.interest_tags, profile.exclude_tags, tag, kind);
+    await upsertProfile(session.sub, {
+      interest_tags: next.interest,
+      exclude_tags: next.exclude,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "保存に失敗しました";
+    redirect(`/?profile_error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath("/");
+  revalidatePath("/account");
+}
 
 export async function saveProfile(formData: FormData) {
   const session = await getSession();

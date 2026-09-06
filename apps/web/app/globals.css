@@ -354,15 +354,33 @@ input[type="text"]:focus {
   border-color: #3d4038;
 }
 
-a.tag:hover {
+a.tag:hover,
+button.tag:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+button.tag {
+  padding: 3px 9px;
+  font-size: 11px;
+}
+
+button.tag:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .tag-interest {
   border-color: rgba(198, 240, 122, 0.45);
   background: rgba(198, 240, 122, 0.1);
   color: var(--accent);
+}
+
+.tag-exclude {
+  border-color: rgba(220, 120, 90, 0.5);
+  background: rgba(220, 120, 90, 0.12);
+  color: #e8a090;
+  text-decoration: line-through;
 }
 
 .tag-active {
