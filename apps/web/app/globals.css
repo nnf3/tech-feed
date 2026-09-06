@@ -130,6 +130,7 @@ input[type="search"]:focus {
 }
 
 .card {
+  position: relative;
   display: block;
   padding: 20px 22px;
   background: var(--panel);
@@ -144,6 +145,31 @@ input[type="search"]:focus {
 .card-body {
   display: block;
   color: inherit;
+  padding-right: 36px;
+}
+
+.bookmark-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.bookmark-btn:hover,
+.bookmark-btn-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bookmark-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .card-body:hover h2 {

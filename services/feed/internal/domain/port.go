@@ -38,3 +38,12 @@ type ProfileStore interface {
 	UpsertProfile(ctx context.Context, profile Profile) error
 	GetProfile(ctx context.Context, userID string) (*Profile, error)
 }
+
+// BookmarkStore はブックマークの永続化。いまの実装は Postgres。
+type BookmarkStore interface {
+	UpsertBookmark(ctx context.Context, bookmark Bookmark) error
+	GetBookmark(ctx context.Context, userID, articleID string) (*Bookmark, error)
+	DeleteBookmark(ctx context.Context, userID, articleID string) error
+	ListBookmarks(ctx context.Context, userID string) ([]Bookmark, error)
+	CountBookmarks(ctx context.Context, userID string) (int, error)
+}
