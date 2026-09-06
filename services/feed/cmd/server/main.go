@@ -9,6 +9,7 @@ import (
 
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/es"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/httpserver"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/postgres"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/ranking"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/zenn"
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
@@ -27,18 +28,26 @@ func main() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	if err := store.WaitReady(ctx); err != nil {
-		cancel()
 		log.Fatal(err)
 	}
 	if err := store.EnsureIndex(ctx); err != nil {
-		cancel()
 		log.Fatal(err)
 	}
-	cancel()
+
+	db, err := postgres.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Migrate(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	ingest := usecase.NewIngest(store, zenn.New(os.Getenv("ZENN_FEED_URL")))
 	list := usecase.NewListFeed(store, ranking.PublishedAt{})
+	users := usecase.NewUsers(db)
 
 	// 起動時に一度だけ取り込む。定期クロールは crawler をサービスとして切り出すときに入れる。
 	go func() {
@@ -52,7 +61,7 @@ func main() {
 		log.Printf("ingested %d articles from zenn", len(items))
 	}()
 
-	srv := httpserver.New(list, ingest)
+	srv := httpserver.New(list, ingest, users)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)

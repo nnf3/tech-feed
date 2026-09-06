@@ -18,3 +18,9 @@ type Source interface {
 type Ranker interface {
 	Rank(articles []Article) []Article
 }
+
+// UserStore はユーザーの永続化。いまの実装は Postgres。
+type UserStore interface {
+	Upsert(ctx context.Context, user User) error
+	Get(ctx context.Context, id string) (*User, error)
+}

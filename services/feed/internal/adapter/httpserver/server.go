@@ -7,16 +7,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
 type Server struct {
 	list   *usecase.ListFeed
 	ingest *usecase.Ingest
+	users  *usecase.Users
 }
 
-func New(list *usecase.ListFeed, ingest *usecase.Ingest) *Server {
-	return &Server{list: list, ingest: ingest}
+func New(list *usecase.ListFeed, ingest *usecase.Ingest, users *usecase.Users) *Server {
+	return &Server{list: list, ingest: ingest, users: users}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -24,6 +26,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /articles", s.articles)
 	mux.HandleFunc("POST /ingest", s.triggerIngest)
+	mux.HandleFunc("PUT /users", s.upsertUser)
+	mux.HandleFunc("GET /users/{id}", s.getUser)
 	return mux
 }
 
@@ -59,6 +63,42 @@ func (s *Server) triggerIngest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"ingested": len(items)})
+}
+
+func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	var body domain.User
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	user, err := s.users.Upsert(ctx, body)
+	if err != nil {
+		log.Printf("upsert user: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
+}
+
+func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	user, err := s.users.Get(ctx, r.PathValue("id"))
+	if err != nil {
+		log.Printf("get user: %v", err)
+		http.Error(w, "user lookup failed", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertUser } from "@/lib/db";
+import { upsertUser } from "@/lib/users";
 import { claimsFromIdToken, exchangeCode } from "@/lib/auth/oidc";
 import {
   encodeSession,

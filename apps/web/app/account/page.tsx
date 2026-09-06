@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/Header";
 import { authConfig } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
-import { getUser } from "@/lib/db";
+import { getUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
