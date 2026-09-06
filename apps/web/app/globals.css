@@ -185,6 +185,13 @@ input[type="search"]:focus {
   line-height: 1.6;
 }
 
+.card mark {
+  background: rgba(198, 240, 122, 0.28);
+  color: inherit;
+  padding: 0 0.12em;
+  border-radius: 3px;
+}
+
 .empty {
   padding: 40px 20px;
   text-align: center;

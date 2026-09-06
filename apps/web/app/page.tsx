@@ -1,5 +1,6 @@
 import { FeedMeta } from "@/components/FeedMeta";
 import { Header } from "@/components/Header";
+import { HighlightedText } from "@/components/HighlightedText";
 import { Tags } from "@/components/Tags";
 import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
@@ -76,8 +77,14 @@ export default async function HomePage({
                   <span className={`source source-${article.source}`}>{article.source}</span>
                   <span>{formatDate(article.published_at)}</span>
                 </div>
-                <h2>{article.title}</h2>
-                {article.summary ? <p>{article.summary}</p> : null}
+                <h2>
+                  <HighlightedText text={article.title} highlighted={article.title_highlighted} />
+                </h2>
+                {article.summary ? (
+                  <p>
+                    <HighlightedText text={article.summary} highlighted={article.summary_highlighted} />
+                  </p>
+                ) : null}
               </a>
               <Tags tags={article.tags ?? []} interest={interest} active={tag} query={q} links />
             </article>

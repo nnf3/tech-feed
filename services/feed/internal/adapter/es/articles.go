@@ -151,7 +151,8 @@ func (s *Store) BulkUpsert(ctx context.Context, articles []domain.Article) error
 }
 
 type articleHit struct {
-	Source domain.Article `json:"_source"`
+	Source    domain.Article      `json:"_source"`
+	Highlight map[string][]string `json:"highlight"`
 }
 
 type articleSearchResponse struct {
@@ -191,7 +192,7 @@ func articleSearchBody(query domain.FeedQuery) map[string]any {
 		}
 	}
 
-	return map[string]any{
+	body := map[string]any{
 		"size": 50,
 		"sort": []any{
 			map[string]any{"_score": map[string]any{"order": "desc"}},
@@ -199,6 +200,18 @@ func articleSearchBody(query domain.FeedQuery) map[string]any {
 		},
 		"query": map[string]any{"bool": boolQuery},
 	}
+	if strings.TrimSpace(query.Text) != "" {
+		body["highlight"] = map[string]any{
+			"encoder":   "html",
+			"pre_tags":  []string{"<mark>"},
+			"post_tags": []string{"</mark>"},
+			"fields": map[string]any{
+				"title":   map[string]any{"number_of_fragments": 0},
+				"summary": map[string]any{"number_of_fragments": 0},
+			},
+		}
+	}
+	return body
 }
 
 func (s *Store) Search(ctx context.Context, query domain.FeedQuery) ([]domain.Article, error) {
@@ -228,7 +241,17 @@ func (s *Store) Search(ctx context.Context, query domain.FeedQuery) ([]domain.Ar
 
 	articles := make([]domain.Article, 0, len(parsed.Hits.Hits))
 	for _, hit := range parsed.Hits.Hits {
-		articles = append(articles, hit.Source)
+		articles = append(articles, applyHighlight(hit.Source, hit.Highlight))
 	}
 	return articles, nil
+}
+
+func applyHighlight(article domain.Article, highlight map[string][]string) domain.Article {
+	if titles := highlight["title"]; len(titles) > 0 {
+		article.TitleHighlighted = titles[0]
+	}
+	if summaries := highlight["summary"]; len(summaries) > 0 {
+		article.SummaryHighlighted = summaries[0]
+	}
+	return article
 }
