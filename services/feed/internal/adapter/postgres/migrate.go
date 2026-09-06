@@ -13,12 +13,12 @@ import (
 var migrationFiles embed.FS
 
 func (s *Store) Migrate(ctx context.Context) error {
-	if _, err := s.pool.Exec(ctx, `
+	if err := s.withCtx(ctx).Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		)
-	`); err != nil {
+	`).Error; err != nil {
 		return fmt.Errorf("create schema_migrations: %w", err)
 	}
 
@@ -36,7 +36,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 
 	for _, name := range names {
 		var exists bool
-		if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`, name).Scan(&exists); err != nil {
+		if err := s.withCtx(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)`, name).Scan(&exists).Error; err != nil {
 			return err
 		}
 		if exists {
@@ -47,10 +47,10 @@ func (s *Store) Migrate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if _, err := s.pool.Exec(ctx, string(body)); err != nil {
+		if err := s.withCtx(ctx).Exec(string(body)).Error; err != nil {
 			return fmt.Errorf("apply %s: %w", name, err)
 		}
-		if _, err := s.pool.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, name); err != nil {
+		if err := s.withCtx(ctx).Exec(`INSERT INTO schema_migrations (version) VALUES (?)`, name).Error; err != nil {
 			return err
 		}
 	}

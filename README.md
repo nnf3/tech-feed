@@ -28,5 +28,5 @@ IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` 
 ## 構成
 
 - `apps/web` — Next.js（フロント + BFF）。OIDC セッションと画面。Postgres は触らない
-- `services/feed` — Go（収集 / 検索 / 並び替え / ユーザー）。記事は Elasticsearch、ユーザーは Postgres
+- `services/feed` — Go（収集 / 検索 / 並び替え / ユーザー / プロフィール）。記事は Elasticsearch、ユーザーとプロフィールは Postgres
 - `infra/elasticsearch` — Kuromoji + ICU 入り Elasticsearch

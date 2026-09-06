@@ -46,8 +46,9 @@ func main() {
 	}
 
 	ingest := usecase.NewIngest(store, zenn.New(os.Getenv("ZENN_FEED_URL")))
-	list := usecase.NewListFeed(store, ranking.PublishedAt{})
+	list := usecase.NewListFeed(store, db, ranking.PublishedAt{})
 	users := usecase.NewUsers(db)
+	profiles := usecase.NewProfiles(db, db)
 
 	// 起動時に一度だけ取り込む。定期クロールは crawler をサービスとして切り出すときに入れる。
 	go func() {
@@ -61,7 +62,7 @@ func main() {
 		log.Printf("ingested %d articles from zenn", len(items))
 	}()
 
-	srv := httpserver.New(list, ingest, users)
+	srv := httpserver.New(list, ingest, users, profiles)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)

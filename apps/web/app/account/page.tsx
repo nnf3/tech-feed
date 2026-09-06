@@ -1,12 +1,19 @@
 import { redirect } from "next/navigation";
+import { saveProfile } from "@/app/actions";
 import { Header } from "@/components/Header";
 import { authConfig } from "@/lib/auth/config";
 import { getSession } from "@/lib/auth/session";
+import { getProfile } from "@/lib/profiles";
 import { getUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ profile_error?: string; profile_saved?: string }>;
+}) {
+  const { profile_error: profileError = "", profile_saved: profileSaved = "" } = await searchParams;
   const session = await getSession();
   if (!session) {
     redirect("/login");
@@ -17,6 +24,7 @@ export default async function AccountPage() {
     email: session.email,
     name: session.name,
   };
+  const profile = await getProfile(session.sub);
 
   return (
     <main>
@@ -44,6 +52,40 @@ export default async function AccountPage() {
         <p className="account-note">
           パスワード変更は IdP（Kratos）の設定画面で行います。完了後はこのページに戻ってください。
         </p>
+      </section>
+
+      <p className="meta">プロフィール</p>
+      {profileError ? <p className="meta">保存に失敗しました: {profileError}</p> : null}
+      {profileSaved ? <p className="meta">プロフィールを保存しました。</p> : null}
+      <section className="account-card">
+        <form className="profile-form" action={saveProfile}>
+          <label>
+            <span>関心タグ</span>
+            <input
+              type="text"
+              name="interest_tags"
+              defaultValue={profile.interest_tags.join(", ")}
+              placeholder="go, rust, kubernetes"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            <span>除外タグ</span>
+            <input
+              type="text"
+              name="exclude_tags"
+              defaultValue={profile.exclude_tags.join(", ")}
+              placeholder="beginner, poem"
+              autoComplete="off"
+            />
+          </label>
+          <div className="account-actions">
+            <button type="submit">プロフィールを保存</button>
+          </div>
+          <p className="account-note">
+            カンマまたは空白区切りです。除外タグの記事は一覧から外し、関心タグは上に寄ります。
+          </p>
+        </form>
       </section>
     </main>
   );

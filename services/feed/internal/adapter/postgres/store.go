@@ -2,59 +2,51 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nnf3/tech-feed/services/feed/internal/domain"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Store struct {
-	pool *pgxpool.Pool
+	db *gorm.DB
 }
 
 func New(ctx context.Context, databaseURL string) (*Store, error) {
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.New(ctx, databaseURL)
+
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+		// スキーマは migrations/*.sql が正。AutoMigrate は使わない。
+		DisableAutomaticPing: true,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
+
+	sqlDB, err := db.DB()
+	if err != nil {
 		return nil, err
 	}
-	return &Store{pool: pool}, nil
+	if err := sqlDB.PingContext(ctx); err != nil {
+		_ = sqlDB.Close()
+		return nil, err
+	}
+
+	return &Store{db: db}, nil
 }
 
 func (s *Store) Close() {
-	s.pool.Close()
-}
-
-func (s *Store) Upsert(ctx context.Context, user domain.User) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO users (id, email, name)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (id) DO UPDATE SET
-			email = EXCLUDED.email,
-			name = EXCLUDED.name,
-			updated_at = now()
-	`, user.ID, user.Email, user.Name)
-	return err
-}
-
-func (s *Store) Get(ctx context.Context, id string) (*domain.User, error) {
-	var user domain.User
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, email, name FROM users WHERE id = $1
-	`, id).Scan(&user.ID, &user.Email, &user.Name)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
+	sqlDB, err := s.db.DB()
 	if err != nil {
-		return nil, err
+		return
 	}
-	return &user, nil
+	_ = sqlDB.Close()
+}
+
+func (s *Store) withCtx(ctx context.Context) *gorm.DB {
+	return s.db.WithContext(ctx)
 }

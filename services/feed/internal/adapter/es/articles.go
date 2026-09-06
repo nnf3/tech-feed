@@ -160,33 +160,43 @@ type articleSearchResponse struct {
 	} `json:"hits"`
 }
 
-func articleSearchBody(query string) map[string]any {
-	if strings.TrimSpace(query) == "" {
-		return map[string]any{
-			"size": 50,
-			"sort": []any{map[string]any{"published_at": map[string]any{"order": "desc"}}},
-			"query": map[string]any{
-				"match_all": map[string]any{},
+func articleSearchBody(query domain.FeedQuery) map[string]any {
+	boolQuery := map[string]any{}
+	if strings.TrimSpace(query.Text) == "" {
+		boolQuery["must"] = []any{map[string]any{"match_all": map[string]any{}}}
+	} else {
+		boolQuery["must"] = []any{
+			map[string]any{
+				"multi_match": map[string]any{
+					"query":    query.Text,
+					"fields":   []string{"title^2", "summary"},
+					"analyzer": "ja_analyzer",
+				},
 			},
 		}
 	}
+	if len(query.ExcludeTags) > 0 {
+		boolQuery["must_not"] = []any{
+			map[string]any{"terms": map[string]any{"tags": query.ExcludeTags}},
+		}
+	}
+	if len(query.InterestTags) > 0 {
+		boolQuery["should"] = []any{
+			map[string]any{"terms": map[string]any{"tags": query.InterestTags, "boost": 3}},
+		}
+	}
+
 	return map[string]any{
 		"size": 50,
 		"sort": []any{
 			map[string]any{"_score": map[string]any{"order": "desc"}},
 			map[string]any{"published_at": map[string]any{"order": "desc"}},
 		},
-		"query": map[string]any{
-			"multi_match": map[string]any{
-				"query":    query,
-				"fields":   []string{"title^2", "summary"},
-				"analyzer": "ja_analyzer",
-			},
-		},
+		"query": map[string]any{"bool": boolQuery},
 	}
 }
 
-func (s *Store) Search(ctx context.Context, query string) ([]domain.Article, error) {
+func (s *Store) Search(ctx context.Context, query domain.FeedQuery) ([]domain.Article, error) {
 	payload, err := json.Marshal(articleSearchBody(query))
 	if err != nil {
 		return nil, err
