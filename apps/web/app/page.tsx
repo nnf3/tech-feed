@@ -1,4 +1,5 @@
 import { refreshFeed } from "./actions";
+import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,10 @@ function formatDate(value: string) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; auth_error?: string }>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", auth_error: authError = "" } = await searchParams;
+  const session = await getSession();
   let articles = [] as Awaited<ReturnType<typeof listArticles>>;
   let error = "";
 
@@ -37,21 +39,34 @@ export default async function HomePage({
           <small>Local aggregator</small>
           <h1>Tech-Feed</h1>
         </div>
-        <form className="toolbar" action="/">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="キーワード"
-            aria-label="記事を検索"
-          />
-          <button type="submit">検索</button>
-        </form>
-        <form action={refreshFeed}>
-          <button type="submit">再取得</button>
-        </form>
+        <div className="header-actions">
+          <form className="toolbar" action="/">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="キーワード"
+              aria-label="記事を検索"
+            />
+            <button type="submit">検索</button>
+          </form>
+          <form action={refreshFeed}>
+            <button type="submit">再取得</button>
+          </form>
+          {session ? (
+            <form className="auth" action="/logout" method="post">
+              <span>{session.email || session.sub}</span>
+              <button type="submit">ログアウト</button>
+            </form>
+          ) : (
+            <a className="auth-link" href="/login">
+              ログイン
+            </a>
+          )}
+        </div>
       </header>
 
+      {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
       <p className="meta">
         {error ? `読み込みに失敗しました: ${error}` : `${articles.length} 件 · Zenn RSS`}
       </p>
