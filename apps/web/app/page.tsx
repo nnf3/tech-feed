@@ -28,7 +28,7 @@ export default async function HomePage({
   let error = "";
 
   try {
-    articles = await listArticles(q);
+    articles = await listArticles(q, session?.sub ?? "");
   } catch (err) {
     error = err instanceof Error ? err.message : "failed to load feed";
   }
@@ -53,7 +53,9 @@ export default async function HomePage({
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
       <p className="meta">
-        {error ? `読み込みに失敗しました: ${error}` : `${articles.length} 件 · Zenn RSS`}
+        {error
+          ? `読み込みに失敗しました: ${error}`
+          : `${articles.length} 件 · Zenn RSS${session ? " · プロフィール反映" : ""}`}
       </p>
 
       {articles.length === 0 && !error ? (
@@ -68,6 +70,7 @@ export default async function HomePage({
               </div>
               <h2>{article.title}</h2>
               {article.summary ? <p>{article.summary}</p> : null}
+              {article.tags?.length ? <p className="tags">{article.tags.join(" · ")}</p> : null}
             </a>
           ))}
         </section>

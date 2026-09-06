@@ -21,12 +21,12 @@ docker compose up --build
 ./scripts/register-idp-client.sh
 ```
 
-IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` に戻ります。ユーザーは Postgres の `users` に保存します。
+IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` に戻ります。ユーザーは feed が Postgres の `users` に保存します。
 
 `compose.yaml` は開発用です。Go と Next.js はボリュームマウントしているので、ソースを保存すればコンテナ内で再ビルド / ホットリロードされます。`go.mod` や `package.json` を変えたときだけ `docker compose up --build` し直してください。本番向けの焼き込みイメージは各ディレクトリの `Dockerfile` です。
 
 ## 構成
 
-- `apps/web` — Next.js（フロント + BFF）。ユーザーデータは Postgres
-- `services/feed` — Go（収集 / 検索 / 並び替え）。記事は Elasticsearch
+- `apps/web` — Next.js（フロント + BFF）。OIDC セッションと画面。Postgres は触らない
+- `services/feed` — Go（収集 / 検索 / 並び替え / ユーザー / プロフィール）。記事は Elasticsearch、ユーザーとプロフィールは Postgres
 - `infra/elasticsearch` — Kuromoji + ICU 入り Elasticsearch
