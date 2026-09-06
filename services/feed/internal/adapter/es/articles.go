@@ -6,15 +6,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 )
 
-const articlesIndex = "articles"
+const (
+	articlesAlias   = "articles"
+	articlesVersion = 1
+)
 
-// articlesMapping は articles インデックスの定義。
-// 変更時は新規インデックス作成 + alias swap が必要（未実装）。
+// articlesMapping は実インデックスの定義。
+// 変えるときは articlesVersion を上げる。起動時に新インデックスへ reindex して alias を張り替える。
 const articlesMapping = `{
   "settings": {
     "analysis": {
@@ -39,28 +43,74 @@ const articlesMapping = `{
   }
 }`
 
+func articlesPhysicalIndex() string {
+	return fmt.Sprintf("%s-v%d", articlesAlias, articlesVersion)
+}
+
 func (s *Store) EnsureIndex(ctx context.Context) error {
-	res, err := s.client.Indices.Exists([]string{articlesIndex}, s.client.Indices.Exists.WithContext(ctx))
+	desired := articlesPhysicalIndex()
+
+	exists, err := s.existsIndex(ctx, desired)
 	if err != nil {
 		return err
 	}
-	res.Body.Close()
-	if res.StatusCode == 200 {
+	if !exists {
+		log.Printf("elasticsearch: create index %s", desired)
+		if err := s.createIndex(ctx, desired, articlesMapping); err != nil {
+			return err
+		}
+	}
+
+	isAlias, err := s.existsAlias(ctx, articlesAlias)
+	if err != nil {
+		return err
+	}
+	if !isAlias {
+		// 旧実装は alias と同名の実インデックスを作っていた。名前を空けるため、ここだけ一瞬 404 になり得る。
+		legacy, err := s.existsIndex(ctx, articlesAlias)
+		if err != nil {
+			return err
+		}
+		if legacy {
+			log.Printf("elasticsearch: migrate concrete index %s -> %s", articlesAlias, desired)
+			if err := s.reindex(ctx, articlesAlias, desired); err != nil {
+				return err
+			}
+			if err := s.deleteIndex(ctx, articlesAlias); err != nil {
+				return err
+			}
+		}
+		log.Printf("elasticsearch: point alias %s -> %s", articlesAlias, desired)
+		return s.swapAlias(ctx, articlesAlias, desired, nil)
+	}
+
+	current, err := s.aliasTargets(ctx, articlesAlias)
+	if err != nil {
+		return err
+	}
+	if len(current) == 1 && current[0] == desired {
 		return nil
 	}
 
-	create, err := s.client.Indices.Create(
-		articlesIndex,
-		s.client.Indices.Create.WithContext(ctx),
-		s.client.Indices.Create.WithBody(strings.NewReader(articlesMapping)),
-	)
-	if err != nil {
+	log.Printf("elasticsearch: swap alias %s from %v to %s", articlesAlias, current, desired)
+	for _, old := range current {
+		if old == desired {
+			continue
+		}
+		if err := s.reindex(ctx, old, desired); err != nil {
+			return err
+		}
+	}
+	if err := s.swapAlias(ctx, articlesAlias, desired, current); err != nil {
 		return err
 	}
-	defer create.Body.Close()
-	if create.IsError() {
-		body, _ := io.ReadAll(create.Body)
-		return fmt.Errorf("create index: %s", body)
+	for _, old := range current {
+		if old == desired {
+			continue
+		}
+		if err := s.deleteIndex(ctx, old); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -73,7 +123,7 @@ func (s *Store) BulkUpsert(ctx context.Context, articles []domain.Article) error
 	var buf bytes.Buffer
 	for _, a := range articles {
 		meta, err := json.Marshal(map[string]any{
-			"index": map[string]any{"_index": articlesIndex, "_id": a.ID},
+			"index": map[string]any{"_index": articlesAlias, "_id": a.ID},
 		})
 		if err != nil {
 			return err
@@ -144,7 +194,7 @@ func (s *Store) Search(ctx context.Context, query string) ([]domain.Article, err
 
 	res, err := s.client.Search(
 		s.client.Search.WithContext(ctx),
-		s.client.Search.WithIndex(articlesIndex),
+		s.client.Search.WithIndex(articlesAlias),
 		s.client.Search.WithBody(bytes.NewReader(payload)),
 	)
 	if err != nil {

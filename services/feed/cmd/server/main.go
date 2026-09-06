@@ -40,6 +40,7 @@ func main() {
 	ingest := usecase.NewIngest(store, zenn.New(os.Getenv("ZENN_FEED_URL")))
 	list := usecase.NewListFeed(store, ranking.PublishedAt{})
 
+	// 起動時に一度だけ取り込む。定期クロールは crawler をサービスとして切り出すときに入れる。
 	go func() {
 		ingestCtx, ingestCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer ingestCancel()
