@@ -1,16 +1,5 @@
 import { ProfileTag } from "@/components/ProfileTag";
-
-export function tagHref(tag: string, query = "", active = "") {
-  const params = new URLSearchParams();
-  if (query) {
-    params.set("q", query);
-  }
-  if (tag !== active) {
-    params.set("tag", tag);
-  }
-  const qs = params.toString();
-  return qs ? `/?${qs}` : "/";
-}
+import { feedHref } from "@/lib/feed";
 
 export function Tags({
   tags,
@@ -18,6 +7,7 @@ export function Tags({
   exclude = [],
   active = "",
   query = "",
+  sort = "",
   links = false,
   profile = false,
 }: {
@@ -26,6 +16,7 @@ export function Tags({
   exclude?: string[];
   active?: string;
   query?: string;
+  sort?: string;
   links?: boolean;
   profile?: boolean;
 }) {
@@ -53,7 +44,7 @@ export function Tags({
             {profile ? (
               <ProfileTag tag={tag} className={className} />
             ) : links ? (
-              <a className={className} href={tagHref(tag, query, active)}>
+              <a className={className} href={feedHref({ query, tag: tag === active ? "" : tag, sort })}>
                 {tag}
               </a>
             ) : (

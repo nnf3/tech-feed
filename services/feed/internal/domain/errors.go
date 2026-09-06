@@ -10,6 +10,7 @@ var (
 	ErrInvalidArticleURL    = errors.New("記事のURLが不正です")
 	ErrArticleTitleRequired = errors.New("記事のタイトルが必要です")
 	ErrTooManyBookmarks     = errors.New("ブックマークは200件までです")
+	ErrInvalidSearchAfter   = errors.New("不正なページ位置です")
 )
 
 func IsValidation(err error) bool {
@@ -18,5 +19,6 @@ func IsValidation(err error) bool {
 		errors.Is(err, ErrTagOverlap) ||
 		errors.Is(err, ErrInvalidArticleURL) ||
 		errors.Is(err, ErrArticleTitleRequired) ||
-		errors.Is(err, ErrTooManyBookmarks)
+		errors.Is(err, ErrTooManyBookmarks) ||
+		errors.Is(err, ErrInvalidSearchAfter)
 }

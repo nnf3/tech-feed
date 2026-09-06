@@ -14,7 +14,7 @@ import (
 
 const (
 	articlesAlias   = "articles"
-	articlesVersion = 1
+	articlesVersion = 2
 )
 
 // articlesMapping は実インデックスの定義。
@@ -33,6 +33,7 @@ const articlesMapping = `{
   },
   "mappings": {
     "properties": {
+      "id": { "type": "keyword" },
       "source": { "type": "keyword" },
       "url": { "type": "keyword" },
       "title": { "type": "text", "analyzer": "ja_analyzer" },
@@ -153,6 +154,7 @@ func (s *Store) BulkUpsert(ctx context.Context, articles []domain.Article) error
 type articleHit struct {
 	Source    domain.Article      `json:"_source"`
 	Highlight map[string][]string `json:"highlight"`
+	Sort      []any               `json:"sort"`
 }
 
 type articleSearchResponse struct {
@@ -193,12 +195,12 @@ func articleSearchBody(query domain.FeedQuery) map[string]any {
 	}
 
 	body := map[string]any{
-		"size": 50,
-		"sort": []any{
-			map[string]any{"_score": map[string]any{"order": "desc"}},
-			map[string]any{"published_at": map[string]any{"order": "desc"}},
-		},
+		"size": domain.FeedPageSize + 1,
+		"sort": articleSort(query.Sort),
 		"query": map[string]any{"bool": boolQuery},
+	}
+	if len(query.SearchAfter) > 0 {
+		body["search_after"] = query.SearchAfter
 	}
 	if strings.TrimSpace(query.Text) != "" {
 		body["highlight"] = map[string]any{
@@ -214,10 +216,23 @@ func articleSearchBody(query domain.FeedQuery) map[string]any {
 	return body
 }
 
-func (s *Store) Search(ctx context.Context, query domain.FeedQuery) ([]domain.Article, error) {
+func articleSort(sort string) []any {
+	tie := map[string]any{"id": map[string]any{"order": "desc"}}
+	published := map[string]any{"published_at": map[string]any{"order": "desc"}}
+	if sort == domain.SortRecommended {
+		return []any{
+			map[string]any{"_score": map[string]any{"order": "desc"}},
+			published,
+			tie,
+		}
+	}
+	return []any{published, tie}
+}
+
+func (s *Store) Search(ctx context.Context, query domain.FeedQuery) (domain.FeedPage, error) {
 	payload, err := json.Marshal(articleSearchBody(query))
 	if err != nil {
-		return nil, err
+		return domain.FeedPage{}, err
 	}
 
 	res, err := s.client.Search(
@@ -226,24 +241,37 @@ func (s *Store) Search(ctx context.Context, query domain.FeedQuery) ([]domain.Ar
 		s.client.Search.WithBody(bytes.NewReader(payload)),
 	)
 	if err != nil {
-		return nil, err
+		return domain.FeedPage{}, err
 	}
 	defer res.Body.Close()
 	if res.IsError() {
 		raw, _ := io.ReadAll(res.Body)
-		return nil, fmt.Errorf("search: %s", raw)
+		return domain.FeedPage{}, fmt.Errorf("search: %s", raw)
 	}
 
 	var parsed articleSearchResponse
 	if err := json.NewDecoder(res.Body).Decode(&parsed); err != nil {
-		return nil, err
+		return domain.FeedPage{}, err
 	}
 
-	articles := make([]domain.Article, 0, len(parsed.Hits.Hits))
-	for _, hit := range parsed.Hits.Hits {
+	return feedPageFromHits(parsed.Hits.Hits)
+}
+
+func feedPageFromHits(hits []articleHit) (domain.FeedPage, error) {
+	var next string
+	if len(hits) > domain.FeedPageSize {
+		cursor, err := domain.EncodeSearchAfter(hits[domain.FeedPageSize-1].Sort)
+		if err != nil {
+			return domain.FeedPage{}, err
+		}
+		next = cursor
+		hits = hits[:domain.FeedPageSize]
+	}
+	articles := make([]domain.Article, 0, len(hits))
+	for _, hit := range hits {
 		articles = append(articles, applyHighlight(hit.Source, hit.Highlight))
 	}
-	return articles, nil
+	return domain.FeedPage{Articles: articles, Next: next}, nil
 }
 
 func applyHighlight(article domain.Article, highlight map[string][]string) domain.Article {

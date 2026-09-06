@@ -1,27 +1,13 @@
-import { ArticleLink } from "@/components/ArticleLink";
-import { BookmarkButton } from "@/components/BookmarkButton";
+import { FeedList } from "@/components/FeedList";
 import { FeedMeta } from "@/components/FeedMeta";
 import { Header } from "@/components/Header";
-import { HighlightedText } from "@/components/HighlightedText";
-import { Tags } from "@/components/Tags";
+import { SortNav } from "@/components/SortNav";
 import { getSession } from "@/lib/auth/session";
 import { listBookmarks } from "@/lib/bookmarks";
-import { listArticles } from "@/lib/feed";
+import { listArticles, normalizeFeedSort, type FeedPage } from "@/lib/feed";
 import { getProfile } from "@/lib/profiles";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
 
 export default async function HomePage({
   searchParams,
@@ -29,6 +15,7 @@ export default async function HomePage({
   searchParams: Promise<{
     q?: string;
     tag?: string;
+    sort?: string;
     auth_error?: string;
     profile_error?: string;
     bookmark_error?: string;
@@ -37,29 +24,31 @@ export default async function HomePage({
   const {
     q = "",
     tag = "",
+    sort: sortParam = "",
     auth_error: authError = "",
     profile_error: profileError = "",
     bookmark_error: bookmarkError = "",
   } = await searchParams;
   const session = await getSession();
+  const sort = normalizeFeedSort(sortParam, Boolean(session));
   const profile = session ? await getProfile(session.sub) : null;
   const interest = profile?.interest_tags ?? [];
   const exclude = profile?.exclude_tags ?? [];
-  const saved = new Set<string>();
+  const saved: string[] = [];
   if (session) {
     try {
       for (const item of await listBookmarks(session.sub)) {
-        saved.add(item.article_id);
+        saved.push(item.article_id);
       }
     } catch {
       // 一覧は出して、保存状態だけ空にする
     }
   }
-  let articles = [] as Awaited<ReturnType<typeof listArticles>>;
+  let page: FeedPage = { articles: [] };
   let error = "";
 
   try {
-    articles = await listArticles(q, session?.sub ?? "", tag);
+    page = await listArticles({ query: q, userID: session?.sub ?? "", tag, sort });
   } catch (err) {
     error = err instanceof Error ? err.message : "failed to load feed";
   }
@@ -76,78 +65,35 @@ export default async function HomePage({
             aria-label="記事を検索"
           />
           {tag ? <input type="hidden" name="tag" value={tag} /> : null}
+          {sort !== "new" ? <input type="hidden" name="sort" value={sort} /> : null}
         </form>
       </Header>
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
       {profileError ? <p className="meta">プロフィールを更新できませんでした: {profileError}</p> : null}
       {bookmarkError ? <p className="meta">ブックマークを更新できませんでした: {bookmarkError}</p> : null}
-      <FeedMeta
-        error={error}
-        count={articles.length}
-        personalized={Boolean(session)}
-        tag={tag}
-        query={q}
-      />
+      <SortNav query={q} tag={tag} sort={sort} recommend={Boolean(session)} />
+      <FeedMeta error={error} personalized={Boolean(session)} tag={tag} query={q} sort={sort} />
 
-      {articles.length === 0 && !error ? (
+      {page.articles.length === 0 && !error ? (
         <div className="empty">
           {tag
             ? `タグ「${tag}」の記事はありません。タグを外して一覧に戻ってください。`
             : "まだ記事がありません。取り込みを待って更新してください。"}
         </div>
-      ) : (
-        <section className="list">
-          {articles.map((article) => (
-            <article key={article.id} className="card">
-              {session ? (
-                <BookmarkButton
-                  saved={saved.has(article.id)}
-                  article={{
-                    article_id: article.id,
-                    url: article.url,
-                    title: article.title,
-                    source: article.source,
-                  }}
-                />
-              ) : null}
-              <ArticleLink
-                className="card-body"
-                href={article.url}
-                record={Boolean(session)}
-                article={{
-                  article_id: article.id,
-                  url: article.url,
-                  title: article.title,
-                  source: article.source,
-                }}
-              >
-                <div className="card-top">
-                  <span className={`source source-${article.source}`}>{article.source}</span>
-                  <span>{formatDate(article.published_at)}</span>
-                </div>
-                <h2>
-                  <HighlightedText text={article.title} highlighted={article.title_highlighted} />
-                </h2>
-                {article.summary ? (
-                  <p>
-                    <HighlightedText text={article.summary} highlighted={article.summary_highlighted} />
-                  </p>
-                ) : null}
-              </ArticleLink>
-              <Tags
-                tags={article.tags ?? []}
-                interest={interest}
-                exclude={exclude}
-                active={tag}
-                query={q}
-                links={!session}
-                profile={Boolean(session)}
-              />
-            </article>
-          ))}
-        </section>
-      )}
+      ) : page.articles.length > 0 ? (
+        <FeedList
+          key={`${sort}|${q}|${tag}`}
+          initial={page}
+          query={q}
+          tag={tag}
+          sort={sort}
+          signedIn={Boolean(session)}
+          saved={saved}
+          interest={interest}
+          exclude={exclude}
+        />
+      ) : null}
     </main>
   );
 }

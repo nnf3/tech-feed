@@ -13,9 +13,9 @@ type stubList struct {
 	userID string
 }
 
-func (s *stubList) Run(_ context.Context, _, userID, _ string) ([]domain.Article, error) {
+func (s *stubList) Run(_ context.Context, _, userID, _, _, _ string) (domain.FeedPage, error) {
 	s.userID = userID
-	return nil, nil
+	return domain.FeedPage{Articles: []domain.Article{}}, nil
 }
 
 func testServer(token string, list articleLister) http.Handler {

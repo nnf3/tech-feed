@@ -4,8 +4,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { addBookmark, removeBookmark, type BookmarkInput } from "@/lib/bookmarks";
+import { listArticles } from "@/lib/feed";
 import { recordHistory } from "@/lib/history";
 import { getProfile, parseTags, toggleTagLists, upsertProfile } from "@/lib/profiles";
+
+export async function loadMoreFeed(input: { query: string; tag: string; sort: string; after: string }) {
+  const session = await getSession();
+  return listArticles({
+    query: input.query,
+    tag: input.tag,
+    sort: input.sort,
+    after: input.after,
+    userID: session?.sub ?? "",
+  });
+}
 
 export async function toggleProfileTag(tag: string, kind: "interest" | "exclude") {
   const session = await getSession();
