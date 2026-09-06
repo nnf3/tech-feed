@@ -24,6 +24,14 @@ export function ensureUsersTable() {
   return ready;
 }
 
+export async function getUser(id: string) {
+  await ensureUsersTable();
+  const rows = await sql<{ id: string; email: string; name: string }[]>`
+    SELECT id, email, name FROM users WHERE id = ${id}
+  `;
+  return rows[0] ?? null;
+}
+
 export async function upsertUser(user: { id: string; email: string; name: string }) {
   await ensureUsersTable();
   await sql`

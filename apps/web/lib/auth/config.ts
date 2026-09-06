@@ -18,5 +18,6 @@ export function authConfig() {
     jwksUrl: process.env.OIDC_JWKS_URL ?? "http://host.docker.internal:4444/.well-known/jwks.json",
     sessionSecret: required("AUTH_SECRET"),
     scope: "openid offline offline_access email profile",
+    settingsUrl: process.env.IDP_SETTINGS_URL ?? "http://127.0.0.1:4455/settings",
   };
 }

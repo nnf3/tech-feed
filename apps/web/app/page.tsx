@@ -1,4 +1,5 @@
 import { refreshFeed } from "./actions";
+import { Header } from "@/components/Header";
 import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
 
@@ -34,37 +35,21 @@ export default async function HomePage({
 
   return (
     <main>
-      <header className="header">
-        <div className="brand">
-          <small>Local aggregator</small>
-          <h1>Tech-Feed</h1>
-        </div>
-        <div className="header-actions">
-          <form className="toolbar" action="/">
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder="キーワード"
-              aria-label="記事を検索"
-            />
-            <button type="submit">検索</button>
-          </form>
-          <form action={refreshFeed}>
-            <button type="submit">再取得</button>
-          </form>
-          {session ? (
-            <form className="auth" action="/logout" method="post">
-              <span>{session.email || session.sub}</span>
-              <button type="submit">ログアウト</button>
-            </form>
-          ) : (
-            <a className="auth-link" href="/login">
-              ログイン
-            </a>
-          )}
-        </div>
-      </header>
+      <Header session={session}>
+        <form className="toolbar" action="/">
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="キーワード"
+            aria-label="記事を検索"
+          />
+          <button type="submit">検索</button>
+        </form>
+        <form action={refreshFeed}>
+          <button type="submit">再取得</button>
+        </form>
+      </Header>
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
       <p className="meta">

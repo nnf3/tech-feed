@@ -76,6 +76,7 @@ services:
       OIDC_AUTH_URL: http://127.0.0.1:4444/oauth2/auth
       OIDC_TOKEN_URL: http://host.docker.internal:4444/oauth2/token
       OIDC_JWKS_URL: http://host.docker.internal:4444/.well-known/jwks.json
+      IDP_SETTINGS_URL: http://127.0.0.1:4455/settings
       WATCHPACK_POLLING: "true"
     volumes:
       - ./apps/web:/app
