@@ -1,3 +1,4 @@
+import { ArticleLink } from "@/components/ArticleLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FeedMeta } from "@/components/FeedMeta";
 import { Header } from "@/components/Header";
@@ -75,7 +76,6 @@ export default async function HomePage({
             aria-label="記事を検索"
           />
           {tag ? <input type="hidden" name="tag" value={tag} /> : null}
-          <button type="submit">検索</button>
         </form>
       </Header>
 
@@ -111,7 +111,17 @@ export default async function HomePage({
                   }}
                 />
               ) : null}
-              <a className="card-body" href={article.url} target="_blank" rel="noreferrer">
+              <ArticleLink
+                className="card-body"
+                href={article.url}
+                record={Boolean(session)}
+                article={{
+                  article_id: article.id,
+                  url: article.url,
+                  title: article.title,
+                  source: article.source,
+                }}
+              >
                 <div className="card-top">
                   <span className={`source source-${article.source}`}>{article.source}</span>
                   <span>{formatDate(article.published_at)}</span>
@@ -124,7 +134,7 @@ export default async function HomePage({
                     <HighlightedText text={article.summary} highlighted={article.summary_highlighted} />
                   </p>
                 ) : null}
-              </a>
+              </ArticleLink>
               <Tags
                 tags={article.tags ?? []}
                 interest={interest}

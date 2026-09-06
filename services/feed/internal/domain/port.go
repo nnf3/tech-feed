@@ -47,3 +47,11 @@ type BookmarkStore interface {
 	ListBookmarks(ctx context.Context, userID string) ([]Bookmark, error)
 	CountBookmarks(ctx context.Context, userID string) (int, error)
 }
+
+// HistoryStore は閲覧履歴の永続化。いまの実装は Postgres。
+type HistoryStore interface {
+	UpsertHistory(ctx context.Context, entry HistoryEntry) error
+	GetHistory(ctx context.Context, userID, articleID string) (*HistoryEntry, error)
+	ListHistory(ctx context.Context, userID string) ([]HistoryEntry, error)
+	TrimHistory(ctx context.Context, userID string, keep int) error
+}

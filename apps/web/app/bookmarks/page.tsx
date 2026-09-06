@@ -1,5 +1,6 @@
-import { Header } from "@/components/Header";
+import { ArticleLink } from "@/components/ArticleLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { Header } from "@/components/Header";
 import { getSession } from "@/lib/auth/session";
 import { listBookmarks } from "@/lib/bookmarks";
 import { redirect } from "next/navigation";
@@ -60,13 +61,23 @@ export default async function BookmarksPage({
                   source: bookmark.source,
                 }}
               />
-              <a className="card-body" href={bookmark.url} target="_blank" rel="noreferrer">
+              <ArticleLink
+                record
+                className="card-body"
+                href={bookmark.url}
+                article={{
+                  article_id: bookmark.article_id,
+                  url: bookmark.url,
+                  title: bookmark.title,
+                  source: bookmark.source,
+                }}
+              >
                 <div className="card-top">
                   <span className={`source source-${bookmark.source}`}>{bookmark.source}</span>
                   <span>{formatDate(bookmark.created_at)}</span>
                 </div>
                 <h2>{bookmark.title}</h2>
-              </a>
+              </ArticleLink>
             </article>
           ))}
         </section>

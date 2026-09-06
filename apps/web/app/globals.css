@@ -242,7 +242,7 @@ input[type="search"]:focus {
   border-color: var(--accent);
 }
 
-.account-icon {
+.nav-icon {
   display: grid;
   place-items: center;
   width: 36px;
@@ -250,11 +250,13 @@ input[type="search"]:focus {
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--panel);
-  color: var(--accent);
+  color: var(--muted);
 }
 
-.account-icon:hover {
+.nav-icon:hover,
+.nav-icon-active {
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .account-card {

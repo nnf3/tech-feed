@@ -21,11 +21,12 @@ type Server struct {
 	users         *usecase.Users
 	profiles      *usecase.Profiles
 	bookmarks     *usecase.Bookmarks
+	history       *usecase.History
 	internalToken string
 }
 
-func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles, bookmarks *usecase.Bookmarks, internalToken string) *Server {
-	return &Server{list: list, users: users, profiles: profiles, bookmarks: bookmarks, internalToken: internalToken}
+func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles, bookmarks *usecase.Bookmarks, history *usecase.History, internalToken string) *Server {
+	return &Server{list: list, users: users, profiles: profiles, bookmarks: bookmarks, history: history, internalToken: internalToken}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -39,6 +40,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /me/bookmarks", s.listBookmarks)
 	mux.HandleFunc("PUT /me/bookmarks", s.addBookmark)
 	mux.HandleFunc("DELETE /me/bookmarks/{article_id}", s.removeBookmark)
+	mux.HandleFunc("GET /me/history", s.listHistory)
+	mux.HandleFunc("PUT /me/history", s.recordHistory)
 	return mux
 }
 
@@ -208,6 +211,47 @@ func (s *Server) removeBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) listHistory(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	items, err := s.history.List(ctx, userID)
+	if err != nil {
+		writeUsecaseError(w, "list history", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"history": items})
+}
+
+func (s *Server) recordHistory(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	var body domain.HistoryEntry
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	body.UserID = userID
+
+	item, err := s.history.Record(ctx, body)
+	if err != nil {
+		writeUsecaseError(w, "record history", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
 }
 
 func writeUsecaseError(w http.ResponseWriter, op string, err error) {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { addBookmark, removeBookmark, type BookmarkInput } from "@/lib/bookmarks";
+import { recordHistory } from "@/lib/history";
 import { getProfile, parseTags, toggleTagLists, upsertProfile } from "@/lib/profiles";
 
 export async function toggleProfileTag(tag: string, kind: "interest" | "exclude") {
@@ -46,6 +47,19 @@ export async function toggleBookmark(input: BookmarkInput & { saved: boolean; fr
   }
   revalidatePath("/");
   revalidatePath("/bookmarks");
+}
+
+export async function recordVisit(input: BookmarkInput) {
+  const session = await getSession();
+  if (!session) {
+    return;
+  }
+  try {
+    await recordHistory(session.sub, input);
+  } catch {
+    // 外部記事の遷移を止めない
+  }
+  revalidatePath("/history");
 }
 
 export async function saveProfile(formData: FormData) {
