@@ -1,3 +1,5 @@
+import { feedHeaders, feedURL } from "./feed-client";
+
 export type Article = {
   id: string;
   source: string;
@@ -8,21 +10,16 @@ export type Article = {
   published_at: string;
 };
 
-const feedAPI = process.env.FEED_API_URL ?? "http://localhost:8080";
-
 export async function listArticles(query = "", userID = "", tag = ""): Promise<Article[]> {
-  const url = new URL("/articles", feedAPI);
+  const url = feedURL("/articles");
   if (query) {
     url.searchParams.set("q", query);
-  }
-  if (userID) {
-    url.searchParams.set("user_id", userID);
   }
   if (tag) {
     url.searchParams.set("tag", tag);
   }
 
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { headers: feedHeaders(userID), cache: "no-store" });
   if (!res.ok) {
     throw new Error(`feed api returned ${res.status}`);
   }

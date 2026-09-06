@@ -44,11 +44,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	internalToken := os.Getenv("FEED_INTERNAL_TOKEN")
+	if internalToken == "" {
+		log.Print("FEED_INTERNAL_TOKEN is empty: user APIs reject all requests")
+	}
+
 	list := usecase.NewListFeed(store, db, ranking.PublishedAt{})
 	users := usecase.NewUsers(db)
 	profiles := usecase.NewProfiles(db, db)
 
-	srv := httpserver.New(list, users, profiles)
+	srv := httpserver.New(list, users, profiles, internalToken)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)
