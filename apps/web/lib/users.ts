@@ -1,13 +1,14 @@
+import { feedHeaders, feedURL } from "./feed-client";
+
 export type User = {
   id: string;
   email: string;
   name: string;
 };
 
-const feedAPI = process.env.FEED_API_URL ?? "http://localhost:8080";
-
 export async function getUser(id: string): Promise<User | null> {
-  const res = await fetch(new URL(`/users/${encodeURIComponent(id)}`, feedAPI), {
+  const res = await fetch(feedURL("/me"), {
+    headers: feedHeaders(id),
     cache: "no-store",
   });
   if (res.status === 404) {
@@ -20,10 +21,10 @@ export async function getUser(id: string): Promise<User | null> {
 }
 
 export async function upsertUser(user: User): Promise<User> {
-  const res = await fetch(new URL("/users", feedAPI), {
+  const res = await fetch(feedURL("/me"), {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(user),
+    headers: feedHeaders(user.id, { "Content-Type": "application/json" }),
+    body: JSON.stringify({ email: user.email, name: user.name }),
     cache: "no-store",
   });
   if (!res.ok) {

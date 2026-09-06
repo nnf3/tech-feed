@@ -1,10 +1,10 @@
+import { feedHeaders, feedURL } from "./feed-client";
+
 export type Profile = {
   user_id: string;
   interest_tags: string[];
   exclude_tags: string[];
 };
-
-const feedAPI = process.env.FEED_API_URL ?? "http://localhost:8080";
 
 export function parseTags(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string") {
@@ -17,7 +17,8 @@ export function parseTags(raw: FormDataEntryValue | null): string[] {
 }
 
 export async function getProfile(userID: string): Promise<Profile> {
-  const res = await fetch(new URL(`/users/${encodeURIComponent(userID)}/profile`, feedAPI), {
+  const res = await fetch(feedURL("/me/profile"), {
+    headers: feedHeaders(userID),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -27,9 +28,9 @@ export async function getProfile(userID: string): Promise<Profile> {
 }
 
 export async function upsertProfile(userID: string, profile: Pick<Profile, "interest_tags" | "exclude_tags">): Promise<Profile> {
-  const res = await fetch(new URL(`/users/${encodeURIComponent(userID)}/profile`, feedAPI), {
+  const res = await fetch(feedURL("/me/profile"), {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: feedHeaders(userID, { "Content-Type": "application/json" }),
     body: JSON.stringify(profile),
     cache: "no-store",
   });

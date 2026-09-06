@@ -12,24 +12,29 @@ import (
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
-type Server struct {
-	list     *usecase.ListFeed
-	users    *usecase.Users
-	profiles *usecase.Profiles
+type articleLister interface {
+	Run(ctx context.Context, query, userID, tag string) ([]domain.Article, error)
 }
 
-func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles) *Server {
-	return &Server{list: list, users: users, profiles: profiles}
+type Server struct {
+	list          articleLister
+	users         *usecase.Users
+	profiles      *usecase.Profiles
+	internalToken string
+}
+
+func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles, internalToken string) *Server {
+	return &Server{list: list, users: users, profiles: profiles, internalToken: internalToken}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /articles", s.articles)
-	mux.HandleFunc("PUT /users", s.upsertUser)
-	mux.HandleFunc("GET /users/{id}", s.getUser)
-	mux.HandleFunc("GET /users/{id}/profile", s.getProfile)
-	mux.HandleFunc("PUT /users/{id}/profile", s.upsertProfile)
+	mux.HandleFunc("GET /me", s.getUser)
+	mux.HandleFunc("PUT /me", s.upsertUser)
+	mux.HandleFunc("GET /me/profile", s.getProfile)
+	mux.HandleFunc("PUT /me/profile", s.upsertProfile)
 	return mux
 }
 
@@ -41,7 +46,12 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	items, err := s.list.Run(ctx, r.URL.Query().Get("q"), r.URL.Query().Get("user_id"), r.URL.Query().Get("tag"))
+	userID := ""
+	if s.hasInternalToken(r) {
+		userID = callerUserID(r)
+	}
+
+	items, err := s.list.Run(ctx, r.URL.Query().Get("q"), userID, r.URL.Query().Get("tag"))
 	if err != nil {
 		log.Printf("list feed: %v", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -54,6 +64,11 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -62,6 +77,7 @@ func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
+	body.ID = userID
 
 	user, err := s.users.Upsert(ctx, body)
 	if err != nil {
@@ -72,10 +88,15 @@ func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	user, err := s.users.Get(ctx, r.PathValue("id"))
+	user, err := s.users.Get(ctx, userID)
 	if err != nil {
 		writeUsecaseError(w, "get user", err)
 		return
@@ -88,10 +109,15 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	profile, err := s.profiles.Get(ctx, r.PathValue("id"))
+	profile, err := s.profiles.Get(ctx, userID)
 	if err != nil {
 		writeUsecaseError(w, "get profile", err)
 		return
@@ -100,6 +126,11 @@ func (s *Server) getProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) upsertProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.identity(w, r)
+	if !ok {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -108,7 +139,7 @@ func (s *Server) upsertProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	body.UserID = r.PathValue("id")
+	body.UserID = userID
 
 	profile, err := s.profiles.Upsert(ctx, body)
 	if err != nil {

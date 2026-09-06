@@ -30,6 +30,7 @@ services:
       ES_HOST: http://elasticsearch:9200
       HTTP_ADDR: :8080
       DATABASE_URL: postgres://techfeed:techfeed@postgres:5432/techfeed
+      FEED_INTERNAL_TOKEN: local-tech-feed-internal-token-change-me
     volumes:
       - ./services/feed:/src
     ports:
@@ -95,6 +96,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       FEED_API_URL: http://feed:8080
+      FEED_INTERNAL_TOKEN: local-tech-feed-internal-token-change-me
       AUTH_SECRET: local-tech-feed-auth-secret-change-me
       OIDC_CLIENT_ID: tech-feed-web
       OIDC_REDIRECT_URI: http://127.0.0.1:3001/callback
