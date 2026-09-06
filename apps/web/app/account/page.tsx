@@ -60,28 +60,32 @@ export default async function AccountPage({
       {profileSaved ? <p className="meta">プロフィールを保存しました。</p> : null}
       <section className="account-card">
         <form className="profile-form" action={saveProfile}>
-          <label>
-            <span>関心タグ</span>
-            <input
-              type="text"
-              name="interest_tags"
-              defaultValue={profile.interest_tags.join(", ")}
-              placeholder="go, rust, kubernetes"
-              autoComplete="off"
-            />
-            <Tags tags={profile.interest_tags} interest={profile.interest_tags} />
-          </label>
-          <label>
-            <span>除外タグ</span>
-            <input
-              type="text"
-              name="exclude_tags"
-              defaultValue={profile.exclude_tags.join(", ")}
-              placeholder="beginner, poem"
-              autoComplete="off"
-            />
-            <Tags tags={profile.exclude_tags} />
-          </label>
+          <div className="profile-field">
+            <label>
+              <span>関心タグ</span>
+              <input
+                type="text"
+                name="interest_tags"
+                defaultValue={profile.interest_tags.join(", ")}
+                placeholder="go, rust, kubernetes"
+                autoComplete="off"
+              />
+            </label>
+            <Tags tags={profile.interest_tags} interest={profile.interest_tags} links />
+          </div>
+          <div className="profile-field">
+            <label>
+              <span>除外タグ</span>
+              <input
+                type="text"
+                name="exclude_tags"
+                defaultValue={profile.exclude_tags.join(", ")}
+                placeholder="beginner, poem"
+                autoComplete="off"
+              />
+            </label>
+            <Tags tags={profile.exclude_tags} links />
+          </div>
           <div className="account-actions">
             <button type="submit">プロフィールを保存</button>
           </div>

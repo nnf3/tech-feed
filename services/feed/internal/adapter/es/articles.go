@@ -175,6 +175,11 @@ func articleSearchBody(query domain.FeedQuery) map[string]any {
 			},
 		}
 	}
+	if len(query.FilterTags) > 0 {
+		boolQuery["filter"] = []any{
+			map[string]any{"terms": map[string]any{"tags": query.FilterTags}},
+		}
+	}
 	if len(query.ExcludeTags) > 0 {
 		boolQuery["must_not"] = []any{
 			map[string]any{"terms": map[string]any{"tags": query.ExcludeTags}},
