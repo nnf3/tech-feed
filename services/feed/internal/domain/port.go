@@ -2,12 +2,15 @@ package domain
 
 import "context"
 
-// FeedQuery は一覧 / 検索の条件。プロフィールのタグは ES の must / should に載せる。
+// FeedQuery は一覧 / 検索の条件。関心・履歴・ブックマークのタグは ES の should に載せる。
 type FeedQuery struct {
 	Text         string
 	FilterTags   []string
 	InterestTags []string
+	BookmarkTags []string
+	HistoryTags  []string
 	ExcludeTags  []string
+	ExcludeIDs   []string
 	Sort         string
 	SearchAfter  []any
 }
@@ -15,6 +18,7 @@ type FeedQuery struct {
 // ArticleIndex は永続化のポート。いまの実装は Elasticsearch。
 type ArticleIndex interface {
 	BulkUpsert(ctx context.Context, articles []Article) error
+	GetByIDs(ctx context.Context, ids []string) ([]Article, error)
 	Search(ctx context.Context, query FeedQuery) (FeedPage, error)
 }
 

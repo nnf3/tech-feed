@@ -35,6 +35,26 @@ func TestArticleSearchBodyHighlight(t *testing.T) {
 	}
 }
 
+func TestArticleSearchBodyRecommendSignals(t *testing.T) {
+	body := articleSearchBody(domain.FeedQuery{
+		InterestTags: []string{"go"},
+		BookmarkTags: []string{"k8s"},
+		HistoryTags:  []string{"rust"},
+		ExcludeTags:  []string{"poem"},
+		ExcludeIDs:   []string{"seen"},
+	})
+	query, _ := body["query"].(map[string]any)
+	boolQuery, _ := query["bool"].(map[string]any)
+	should, _ := boolQuery["should"].([]any)
+	if len(should) != 3 {
+		t.Fatalf("should: %#v", should)
+	}
+	mustNot, _ := boolQuery["must_not"].([]any)
+	if len(mustNot) != 2 {
+		t.Fatalf("must_not: %#v", mustNot)
+	}
+}
+
 func TestArticleSearchBodySortAndCursor(t *testing.T) {
 	newest := articleSearchBody(domain.FeedQuery{})
 	if newest["size"] != domain.FeedPageSize+1 {

@@ -9,12 +9,14 @@ import (
 )
 
 type ListFeed struct {
-	index    domain.ArticleIndex
-	profiles domain.ProfileStore
+	index     domain.ArticleIndex
+	profiles  domain.ProfileStore
+	bookmarks domain.BookmarkStore
+	history   domain.HistoryStore
 }
 
-func NewListFeed(index domain.ArticleIndex, profiles domain.ProfileStore) *ListFeed {
-	return &ListFeed{index: index, profiles: profiles}
+func NewListFeed(index domain.ArticleIndex, profiles domain.ProfileStore, bookmarks domain.BookmarkStore, history domain.HistoryStore) *ListFeed {
+	return &ListFeed{index: index, profiles: profiles, bookmarks: bookmarks, history: history}
 }
 
 func (u *ListFeed) Run(ctx context.Context, query, userID, tag, sort, after string) (domain.FeedPage, error) {
@@ -37,6 +39,13 @@ func (u *ListFeed) Run(ctx context.Context, query, userID, tag, sort, after stri
 			feedQuery.ExcludeTags = profile.ExcludeTags
 			if sort == domain.SortRecommended {
 				feedQuery.InterestTags = profile.InterestTags
+				if err := u.applyActivitySignals(ctx, userID, profile.ExcludeTags, &feedQuery); err != nil {
+					return domain.FeedPage{}, err
+				}
+			}
+		} else if sort == domain.SortRecommended {
+			if err := u.applyActivitySignals(ctx, userID, nil, &feedQuery); err != nil {
+				return domain.FeedPage{}, err
 			}
 		}
 	} else {
@@ -51,4 +60,55 @@ func (u *ListFeed) Run(ctx context.Context, query, userID, tag, sort, after stri
 		page.Articles = []domain.Article{}
 	}
 	return page, nil
+}
+
+// applyActivitySignals は履歴とブックマークからタグと除外 ID を query に載せる。
+func (u *ListFeed) applyActivitySignals(ctx context.Context, userID string, excludeTags []string, query *domain.FeedQuery) error {
+	var bookmarkIDs []string
+	var bookmarks []domain.Bookmark
+	if u.bookmarks != nil {
+		items, err := u.bookmarks.ListBookmarks(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("load bookmarks: %w", err)
+		}
+		bookmarks = items
+		for _, item := range items {
+			bookmarkIDs = append(bookmarkIDs, item.ArticleID)
+		}
+	}
+
+	var historyIDs []string
+	var recent []domain.HistoryEntry
+	if u.history != nil {
+		items, err := u.history.ListHistory(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("load history: %w", err)
+		}
+		for _, item := range items {
+			historyIDs = append(historyIDs, item.ArticleID)
+		}
+		if len(items) > domain.RecommendHistoryLookback {
+			items = items[:domain.RecommendHistoryLookback]
+		}
+		recent = items
+	}
+
+	query.ExcludeIDs = domain.UniqueIDs(bookmarkIDs, historyIDs)
+	var recentIDs []string
+	for _, item := range recent {
+		recentIDs = append(recentIDs, item.ArticleID)
+	}
+	lookup := domain.UniqueIDs(bookmarkIDs, recentIDs)
+	if len(lookup) == 0 {
+		return nil
+	}
+
+	articles, err := u.index.GetByIDs(ctx, lookup)
+	if err != nil {
+		return fmt.Errorf("load activity articles: %w", err)
+	}
+	byID := domain.ArticlesByID(articles)
+	query.BookmarkTags = domain.TopTags(domain.BookmarkTagWeights(byID, bookmarks), domain.RecommendTagLimit, excludeTags)
+	query.HistoryTags = domain.TopTags(domain.HistoryTagWeights(byID, recent), domain.RecommendTagLimit, excludeTags)
+	return nil
 }

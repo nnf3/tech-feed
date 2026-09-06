@@ -48,7 +48,7 @@ func main() {
 		log.Print("FEED_INTERNAL_TOKEN is empty: user APIs reject all requests")
 	}
 
-	list := usecase.NewListFeed(store, db)
+	list := usecase.NewListFeed(store, db, db, db)
 	users := usecase.NewUsers(db)
 	profiles := usecase.NewProfiles(db, db)
 	bookmarks := usecase.NewBookmarks(db, db)
