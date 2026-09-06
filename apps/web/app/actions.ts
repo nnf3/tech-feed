@@ -3,13 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { ingestArticles } from "@/lib/feed";
 import { parseTags, upsertProfile } from "@/lib/profiles";
-
-export async function refreshFeed() {
-  await ingestArticles();
-  revalidatePath("/");
-}
 
 export async function saveProfile(formData: FormData) {
   const session = await getSession();

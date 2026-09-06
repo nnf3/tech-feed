@@ -7,6 +7,7 @@
   --line: #2b2d27;
   --accent: #c6f07a;
   --zenn: #3ea8ff;
+  --qiita: #55c500;
 }
 
 * {
@@ -160,9 +161,16 @@ input[type="search"]:focus {
 }
 
 .source {
-  color: var(--zenn);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.source-zenn {
+  color: var(--zenn);
+}
+
+.source-qiita {
+  color: var(--qiita);
 }
 
 .card h2 {

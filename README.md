@@ -10,10 +10,11 @@ docker compose up --build
 
 - Web: http://localhost:3001（3000 は nnf3-idp の sample-web と衝突するため）
 - Feed API: http://localhost:8080
+- Crawler: http://localhost:8081
 - Elasticsearch: http://localhost:9200
 - Postgres: localhost:5433（5432 は nnf3-idp と衝突するため。ユーザー / プロフィール用。記事検索は ES）
 
-起動時に [Zenn RSS](https://zenn.dev/feed) を取り込み、各記事のトピックは `https://zenn.dev/api/articles/{slug}` から補完してトップページに一覧します。
+`crawler` プロセスが起動時と `CRAWL_INTERVAL`（既定 15 分）ごとに [Zenn RSS](https://zenn.dev/feed) と [Qiita API](https://qiita.com/api/v2/items) を取り込みます。Zenn のトピックは記事詳細 API で補完します。`CRAWL_INTERVAL=0` で定期実行だけ止められます。feed は一覧とユーザーだけを担当します。
 
 ログインは [nnf3-idp](https://github.com/nnf3/nnf3-idp) の Hydra を使います。ブラウザは `http://localhost:3001` ではなく **`http://127.0.0.1:3001`** で開いてください。
 
@@ -28,5 +29,5 @@ IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` 
 ## 構成
 
 - `apps/web` — Next.js（フロント + BFF）。OIDC セッションと画面。Postgres は触らない
-- `services/feed` — Go（収集 / 検索 / 並び替え / ユーザー / プロフィール）。記事は Elasticsearch、ユーザーとプロフィールは Postgres
+- `services/feed` — Go。`cmd/server` が一覧とユーザー、`cmd/crawler` が定期収集。記事は Elasticsearch、ユーザーとプロフィールは Postgres
 - `infra/elasticsearch` — Kuromoji + ICU 入り Elasticsearch

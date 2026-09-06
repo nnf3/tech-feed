@@ -11,7 +11,6 @@ import (
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/httpserver"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/postgres"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/ranking"
-	"github.com/nnf3/tech-feed/services/feed/internal/adapter/zenn"
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
@@ -45,24 +44,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ingest := usecase.NewIngest(store, zenn.New(os.Getenv("ZENN_FEED_URL")))
 	list := usecase.NewListFeed(store, db, ranking.PublishedAt{})
 	users := usecase.NewUsers(db)
 	profiles := usecase.NewProfiles(db, db)
 
-	// 起動時に一度だけ取り込む。定期クロールは crawler をサービスとして切り出すときに入れる。
-	go func() {
-		ingestCtx, ingestCancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer ingestCancel()
-		items, err := ingest.Run(ingestCtx)
-		if err != nil {
-			log.Printf("startup ingest skipped: %v", err)
-			return
-		}
-		log.Printf("ingested %d articles from zenn", len(items))
-	}()
-
-	srv := httpserver.New(list, ingest, users, profiles)
+	srv := httpserver.New(list, users, profiles)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)

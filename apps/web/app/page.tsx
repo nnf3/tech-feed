@@ -1,6 +1,6 @@
-import { refreshFeed } from "./actions";
+import { FeedMeta } from "@/components/FeedMeta";
 import { Header } from "@/components/Header";
-import { Tags, tagHref } from "@/components/Tags";
+import { Tags } from "@/components/Tags";
 import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
 import { getProfile } from "@/lib/profiles";
@@ -50,31 +50,22 @@ export default async function HomePage({
           {tag ? <input type="hidden" name="tag" value={tag} /> : null}
           <button type="submit">検索</button>
         </form>
-        <form action={refreshFeed}>
-          <button type="submit">再取得</button>
-        </form>
       </Header>
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
-      <p className="meta">
-        {error
-          ? `読み込みに失敗しました: ${error}`
-          : `${articles.length} 件 · Zenn RSS${session ? " · プロフィール反映" : ""}`}
-        {tag ? (
-          <>
-            {" · "}
-            <a className="tag-filter" href={tagHref(tag, q, tag)}>
-              タグ {tag} を解除
-            </a>
-          </>
-        ) : null}
-      </p>
+      <FeedMeta
+        error={error}
+        count={articles.length}
+        personalized={Boolean(session)}
+        tag={tag}
+        query={q}
+      />
 
       {articles.length === 0 && !error ? (
         <div className="empty">
           {tag
-            ? `タグ「${tag}」の記事はありません。タグを外すか、再取得してください。`
-            : "まだ記事がありません。再取得を押すか、少し待って更新してください。"}
+            ? `タグ「${tag}」の記事はありません。タグを外して一覧に戻ってください。`
+            : "まだ記事がありません。取り込みを待って更新してください。"}
         </div>
       ) : (
         <section className="list">
@@ -82,7 +73,7 @@ export default async function HomePage({
             <article key={article.id} className="card">
               <a className="card-body" href={article.url} target="_blank" rel="noreferrer">
                 <div className="card-top">
-                  <span className="source">{article.source}</span>
+                  <span className={`source source-${article.source}`}>{article.source}</span>
                   <span>{formatDate(article.published_at)}</span>
                 </div>
                 <h2>{article.title}</h2>

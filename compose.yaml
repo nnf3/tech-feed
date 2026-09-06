@@ -29,7 +29,6 @@ services:
     environment:
       ES_HOST: http://elasticsearch:9200
       HTTP_ADDR: :8080
-      ZENN_FEED_URL: https://zenn.dev/feed
       DATABASE_URL: postgres://techfeed:techfeed@postgres:5432/techfeed
     volumes:
       - ./services/feed:/src
@@ -45,6 +44,31 @@ services:
       elasticsearch:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+
+  crawler:
+    build:
+      context: ./services/feed
+      dockerfile: Dockerfile.dev
+    command: ["air", "-c", ".air.crawler.toml"]
+    environment:
+      ES_HOST: http://elasticsearch:9200
+      HTTP_ADDR: :8081
+      ZENN_FEED_URL: https://zenn.dev/feed
+      QIITA_API_URL: https://qiita.com/api/v2/items?per_page=20
+      CRAWL_INTERVAL: 15m
+    volumes:
+      - ./services/feed:/src
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      elasticsearch:
         condition: service_healthy
 
   postgres:
