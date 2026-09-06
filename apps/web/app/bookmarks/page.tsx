@@ -3,21 +3,10 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { Header } from "@/components/Header";
 import { getSession } from "@/lib/auth/session";
 import { listBookmarks } from "@/lib/bookmarks";
+import { formatDate } from "@/lib/dates";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
 
 export default async function BookmarksPage({
   searchParams,

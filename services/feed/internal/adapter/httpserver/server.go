@@ -13,7 +13,7 @@ import (
 )
 
 type articleLister interface {
-	Run(ctx context.Context, query, userID, tag string) ([]domain.Article, error)
+	Run(ctx context.Context, query, userID, tag, sort, after string) (domain.FeedPage, error)
 }
 
 type Server struct {
@@ -58,16 +58,25 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 		userID = callerUserID(r)
 	}
 
-	items, err := s.list.Run(ctx, r.URL.Query().Get("q"), userID, r.URL.Query().Get("tag"))
+	page, err := s.list.Run(
+		ctx,
+		r.URL.Query().Get("q"),
+		userID,
+		r.URL.Query().Get("tag"),
+		r.URL.Query().Get("sort"),
+		r.URL.Query().Get("after"),
+	)
 	if err != nil {
 		log.Printf("list feed: %v", err)
+		if domain.IsValidation(err) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "search failed", http.StatusInternalServerError)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"articles": items,
-	})
+	writeJSON(w, http.StatusOK, page)
 }
 
 func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {

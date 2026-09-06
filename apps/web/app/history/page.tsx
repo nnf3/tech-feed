@@ -1,24 +1,11 @@
 import { ArticleLink } from "@/components/ArticleLink";
 import { Header } from "@/components/Header";
 import { getSession } from "@/lib/auth/session";
+import { formatDate } from "@/lib/dates";
 import { listHistory } from "@/lib/history";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
 
 export default async function HistoryPage() {
   const session = await getSession();
@@ -57,7 +44,7 @@ export default async function HistoryPage() {
               >
                 <div className="card-top">
                   <span className={`source source-${item.source}`}>{item.source}</span>
-                  <span>{formatDate(item.viewed_at)}</span>
+                  <span>{formatDate(item.viewed_at, true)}</span>
                   {item.view_count > 1 ? <span>{item.view_count}回</span> : null}
                 </div>
                 <h2>{item.title}</h2>

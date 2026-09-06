@@ -1,28 +1,28 @@
-import { tagHref } from "@/components/Tags";
+import { feedHref } from "@/lib/feed";
 import { sourceListLabel } from "@/lib/sources";
 
 export function FeedMeta({
   error,
-  count,
   personalized,
   tag,
   query,
+  sort,
 }: {
   error: string;
-  count: number;
   personalized: boolean;
   tag: string;
   query: string;
+  sort: string;
 }) {
   return (
     <p className="meta">
       {error
         ? `読み込みに失敗しました: ${error}`
-        : `${count} 件 · ${sourceListLabel()}${personalized ? " · タグをクリックで関心" : ""}`}
+        : `${sourceListLabel()}${personalized ? " · タグをクリックで関心" : ""}`}
       {tag ? (
         <>
           {" · "}
-          <a className="tag-filter" href={tagHref(tag, query, tag)}>
+          <a className="tag-filter" href={feedHref({ query, sort })}>
             タグ {tag} を解除
           </a>
         </>

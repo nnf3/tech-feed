@@ -10,7 +10,6 @@ import (
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/es"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/httpserver"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/postgres"
-	"github.com/nnf3/tech-feed/services/feed/internal/adapter/ranking"
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
@@ -49,7 +48,7 @@ func main() {
 		log.Print("FEED_INTERNAL_TOKEN is empty: user APIs reject all requests")
 	}
 
-	list := usecase.NewListFeed(store, db, ranking.PublishedAt{})
+	list := usecase.NewListFeed(store, db)
 	users := usecase.NewUsers(db)
 	profiles := usecase.NewProfiles(db, db)
 	bookmarks := usecase.NewBookmarks(db, db)
