@@ -23,11 +23,13 @@ function formatDate(value: string) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string; auth_error?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; auth_error?: string; profile_error?: string }>;
 }) {
-  const { q = "", tag = "", auth_error: authError = "" } = await searchParams;
+  const { q = "", tag = "", auth_error: authError = "", profile_error: profileError = "" } = await searchParams;
   const session = await getSession();
-  const interest = session ? (await getProfile(session.sub)).interest_tags : [];
+  const profile = session ? await getProfile(session.sub) : null;
+  const interest = profile?.interest_tags ?? [];
+  const exclude = profile?.exclude_tags ?? [];
   let articles = [] as Awaited<ReturnType<typeof listArticles>>;
   let error = "";
 
@@ -54,6 +56,7 @@ export default async function HomePage({
       </Header>
 
       {authError ? <p className="meta">ログインに失敗しました: {authError}</p> : null}
+      {profileError ? <p className="meta">プロフィールを更新できませんでした: {profileError}</p> : null}
       <FeedMeta
         error={error}
         count={articles.length}
@@ -86,7 +89,15 @@ export default async function HomePage({
                   </p>
                 ) : null}
               </a>
-              <Tags tags={article.tags ?? []} interest={interest} active={tag} query={q} links />
+              <Tags
+                tags={article.tags ?? []}
+                interest={interest}
+                exclude={exclude}
+                active={tag}
+                query={q}
+                links={!session}
+                profile={Boolean(session)}
+              />
             </article>
           ))}
         </section>

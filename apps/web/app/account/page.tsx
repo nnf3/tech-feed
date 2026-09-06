@@ -84,13 +84,14 @@ export default async function AccountPage({
                 autoComplete="off"
               />
             </label>
-            <Tags tags={profile.exclude_tags} links />
+            <Tags tags={profile.exclude_tags} exclude={profile.exclude_tags} links />
           </div>
           <div className="account-actions">
             <button type="submit">プロフィールを保存</button>
           </div>
           <p className="account-note">
-            カンマまたは空白区切りです。除外タグの記事は一覧から外し、関心タグは上に寄ります。
+            カンマまたは空白区切りです。一覧のタグはクリックで関心、Option / Alt +
+            クリックで除外にできます。
           </p>
         </form>
       </section>

@@ -18,7 +18,7 @@ export function FeedMeta({
     <p className="meta">
       {error
         ? `読み込みに失敗しました: ${error}`
-        : `${count} 件 · ${sourceListLabel()}${personalized ? " · プロフィール反映" : ""}`}
+        : `${count} 件 · ${sourceListLabel()}${personalized ? " · タグをクリックで関心" : ""}`}
       {tag ? (
         <>
           {" · "}
