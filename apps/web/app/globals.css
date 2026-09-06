@@ -64,6 +64,10 @@ main {
   gap: 6px;
 }
 
+.brand:hover h1 {
+  color: var(--accent);
+}
+
 .brand small {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.14em;
@@ -172,31 +176,82 @@ input[type="search"]:focus {
   border-radius: 16px;
 }
 
-.auth,
 .auth-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.auth span {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.auth-link {
   border: 1px solid var(--line);
   background: var(--panel);
   border-radius: 999px;
   padding: 8px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
   color: var(--ink);
 }
 
 .auth-link:hover {
   border-color: var(--accent);
+}
+
+.account-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--accent);
+}
+
+.account-icon:hover {
+  border-color: var(--accent);
+}
+
+.account-card {
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.account-fields {
+  margin: 0 0 24px;
+}
+
+.account-fields div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-fields div:last-child {
+  border-bottom: 0;
+}
+
+.account-fields dt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.account-fields dd {
+  margin: 0;
+  font-size: 18px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
