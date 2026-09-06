@@ -20,3 +20,31 @@ func TestArticleSearchBodyFilterTags(t *testing.T) {
 		t.Fatalf("tags: %#v", terms["tags"])
 	}
 }
+
+func TestArticleSearchBodyHighlight(t *testing.T) {
+	if _, ok := articleSearchBody(domain.FeedQuery{})["highlight"]; ok {
+		t.Fatal("highlight should be off without text")
+	}
+	body := articleSearchBody(domain.FeedQuery{Text: "go"})
+	highlight, ok := body["highlight"].(map[string]any)
+	if !ok {
+		t.Fatal("highlight missing")
+	}
+	if highlight["encoder"] != "html" {
+		t.Fatalf("encoder: %#v", highlight["encoder"])
+	}
+}
+
+func TestApplyHighlight(t *testing.T) {
+	got := applyHighlight(domain.Article{Title: "Go", Summary: "lang"}, map[string][]string{
+		"title":   {"<mark>Go</mark>"},
+		"summary": {"<mark>lang</mark>"},
+	})
+	if got.TitleHighlighted != "<mark>Go</mark>" || got.SummaryHighlighted != "<mark>lang</mark>" {
+		t.Fatalf("%#v", got)
+	}
+	plain := applyHighlight(domain.Article{Title: "Go"}, nil)
+	if plain.TitleHighlighted != "" {
+		t.Fatalf("empty highlight leaked: %#v", plain)
+	}
+}

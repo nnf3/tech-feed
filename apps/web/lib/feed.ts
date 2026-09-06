@@ -6,6 +6,8 @@ export type Article = {
   url: string;
   title: string;
   summary: string;
+  title_highlighted?: string;
+  summary_highlighted?: string;
   tags: string[];
   published_at: string;
 };
