@@ -1,0 +1,77 @@
+import { refreshFeed } from "./actions";
+import { listArticles } from "@/lib/feed";
+
+export const dynamic = "force-dynamic";
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q = "" } = await searchParams;
+  let articles = [] as Awaited<ReturnType<typeof listArticles>>;
+  let error = "";
+
+  try {
+    articles = await listArticles(q);
+  } catch (err) {
+    error = err instanceof Error ? err.message : "failed to load feed";
+  }
+
+  return (
+    <main>
+      <header className="header">
+        <div className="brand">
+          <small>Local aggregator</small>
+          <h1>Tech-Feed</h1>
+        </div>
+        <form className="toolbar" action="/">
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="キーワード"
+            aria-label="記事を検索"
+          />
+          <button type="submit">検索</button>
+        </form>
+        <form action={refreshFeed}>
+          <button type="submit">再取得</button>
+        </form>
+      </header>
+
+      <p className="meta">
+        {error ? `読み込みに失敗しました: ${error}` : `${articles.length} 件 · Zenn RSS`}
+      </p>
+
+      {articles.length === 0 && !error ? (
+        <div className="empty">まだ記事がありません。再取得を押すか、少し待って更新してください。</div>
+      ) : (
+        <section className="list">
+          {articles.map((article) => (
+            <a key={article.id} className="card" href={article.url} target="_blank" rel="noreferrer">
+              <div className="card-top">
+                <span className="source">{article.source}</span>
+                <span>{formatDate(article.published_at)}</span>
+              </div>
+              <h2>{article.title}</h2>
+              {article.summary ? <p>{article.summary}</p> : null}
+            </a>
+          ))}
+        </section>
+      )}
+    </main>
+  );
+}
