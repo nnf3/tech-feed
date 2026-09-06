@@ -83,6 +83,41 @@ func (r bookmarkRecord) toDomain() domain.Bookmark {
 	}
 }
 
+type historyRecord struct {
+	UserID    string    `gorm:"column:user_id;primaryKey"`
+	ArticleID string    `gorm:"column:article_id;primaryKey"`
+	URL       string    `gorm:"column:url"`
+	Title     string    `gorm:"column:title"`
+	Source    string    `gorm:"column:source"`
+	ViewedAt  time.Time `gorm:"column:viewed_at"`
+	ViewCount int       `gorm:"column:view_count"`
+}
+
+func (historyRecord) TableName() string { return "article_views" }
+
+func historyFromDomain(entry domain.HistoryEntry) historyRecord {
+	return historyRecord{
+		UserID:    entry.UserID,
+		ArticleID: entry.ArticleID,
+		URL:       entry.URL,
+		Title:     entry.Title,
+		Source:    entry.Source,
+		ViewCount: entry.ViewCount,
+	}
+}
+
+func (r historyRecord) toDomain() domain.HistoryEntry {
+	return domain.HistoryEntry{
+		UserID:    r.UserID,
+		ArticleID: r.ArticleID,
+		URL:       r.URL,
+		Title:     r.Title,
+		Source:    r.Source,
+		ViewedAt:  r.ViewedAt,
+		ViewCount: r.ViewCount,
+	}
+}
+
 func nonNilTags(tags []string) []string {
 	if tags == nil {
 		return []string{}

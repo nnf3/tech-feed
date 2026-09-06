@@ -52,6 +52,16 @@ func TestUsersRequireInternalToken(t *testing.T) {
 	}
 }
 
+func TestHistoryRequireInternalToken(t *testing.T) {
+	h := testServer("secret", nil)
+	req := httptest.NewRequest(http.MethodGet, "/me/history", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d", rec.Code)
+	}
+}
+
 func TestBookmarksRequireInternalToken(t *testing.T) {
 	h := testServer("secret", nil)
 	req := httptest.NewRequest(http.MethodGet, "/me/bookmarks", nil)

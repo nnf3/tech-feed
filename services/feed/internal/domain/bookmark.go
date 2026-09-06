@@ -1,18 +1,8 @@
 package domain
 
-import (
-	"fmt"
-	"net/url"
-	"strings"
-	"time"
-	"unicode/utf8"
-)
+import "time"
 
-const (
-	MaxBookmarks  = 200
-	MaxTitleRunes = 300
-	MaxSourceLen  = 32
-)
+const MaxBookmarks = 200
 
 type Bookmark struct {
 	UserID    string    `json:"user_id"`
@@ -24,33 +14,14 @@ type Bookmark struct {
 }
 
 func (b Bookmark) Normalized() (Bookmark, error) {
-	b.UserID = strings.TrimSpace(b.UserID)
-	if b.UserID == "" {
-		return Bookmark{}, ErrUserIDRequired
+	snap, err := normalizeArticleSnapshot(b.UserID, b.ArticleID, b.URL, b.Title, b.Source)
+	if err != nil {
+		return Bookmark{}, err
 	}
-
-	b.URL = strings.TrimSpace(b.URL)
-	parsed, err := url.Parse(b.URL)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return Bookmark{}, ErrInvalidArticleURL
-	}
-
-	b.ArticleID = strings.TrimSpace(b.ArticleID)
-	if b.ArticleID == "" {
-		b.ArticleID = IDFromURL(b.URL)
-	}
-
-	b.Title = strings.Join(strings.Fields(b.Title), " ")
-	if b.Title == "" {
-		return Bookmark{}, ErrArticleTitleRequired
-	}
-	if utf8.RuneCountInString(b.Title) > MaxTitleRunes {
-		return Bookmark{}, fmt.Errorf("タイトルは%d文字以内にしてください: %w", MaxTitleRunes, ErrArticleTitleRequired)
-	}
-
-	b.Source = strings.ToLower(strings.TrimSpace(b.Source))
-	if utf8.RuneCountInString(b.Source) > MaxSourceLen {
-		b.Source = string([]rune(b.Source)[:MaxSourceLen])
-	}
+	b.UserID = snap.userID
+	b.ArticleID = snap.articleID
+	b.URL = snap.url
+	b.Title = snap.title
+	b.Source = snap.source
 	return b, nil
 }
