@@ -34,19 +34,28 @@ a {
 }
 
 main {
-  width: min(860px, calc(100% - 32px));
+  width: min(960px, calc(100% - 32px));
   margin: 0 auto;
   padding: 48px 0 80px;
 }
 
 .header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px 24px;
   margin-bottom: 36px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .brand {
@@ -77,13 +86,14 @@ main {
 }
 
 input[type="search"] {
-  width: 220px;
+  width: 180px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
   border-radius: 999px;
-  padding: 10px 14px;
-  font: inherit;
+  padding: 8px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
 }
 
 button {
@@ -91,8 +101,9 @@ button {
   background: var(--panel);
   color: var(--ink);
   border-radius: 999px;
-  padding: 10px 14px;
-  font: inherit;
+  padding: 8px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -159,4 +170,33 @@ input[type="search"]:focus {
   color: var(--muted);
   border: 1px dashed var(--line);
   border-radius: 16px;
+}
+
+.auth,
+.auth-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.auth span {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-link {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: var(--ink);
+}
+
+.auth-link:hover {
+  border-color: var(--accent);
 }
