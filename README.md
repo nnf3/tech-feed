@@ -14,6 +14,8 @@ docker compose up --build
 
 起動時に [Zenn RSS](https://zenn.dev/feed) を取り込み、トップページに一覧します。ログインはまだありません。
 
+`compose.yaml` は開発用です。Go と Next.js はボリュームマウントしているので、ソースを保存すればコンテナ内で再ビルド / ホットリロードされます。`go.mod` や `package.json` を変えたときだけ `docker compose up --build` し直してください。本番向けの焼き込みイメージは各ディレクトリの `Dockerfile` です。
+
 ## 構成
 
 - `apps/web` — Next.js（フロント + BFF）

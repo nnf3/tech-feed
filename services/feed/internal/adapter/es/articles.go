@@ -1,4 +1,4 @@
-package search
+package es
 
 import (
 	"bytes"
@@ -7,65 +7,15 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
-	elasticsearch "github.com/elastic/go-elasticsearch/v9"
-	"github.com/nnf3/tech-feed/services/feed/internal/article"
+	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 )
 
-const indexName = "articles"
+const articlesIndex = "articles"
 
-type Store struct {
-	client *elasticsearch.Client
-}
-
-func New(esHost string) (*Store, error) {
-	if esHost == "" {
-		esHost = "http://localhost:9200"
-	}
-	client, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{esHost},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create elasticsearch client: %w", err)
-	}
-	return &Store{client: client}, nil
-}
-
-func (s *Store) WaitReady(ctx context.Context) error {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		res, err := s.client.Info(s.client.Info.WithContext(ctx))
-		if err == nil {
-			res.Body.Close()
-			if res.StatusCode < 300 {
-				return nil
-			}
-		}
-		select {
-		case <-ctx.Done():
-			if err != nil {
-				return fmt.Errorf("elasticsearch not ready: %w", err)
-			}
-			return ctx.Err()
-		case <-ticker.C:
-		}
-	}
-}
-
-func (s *Store) EnsureIndex(ctx context.Context) error {
-	res, err := s.client.Indices.Exists([]string{indexName}, s.client.Indices.Exists.WithContext(ctx))
-	if err != nil {
-		return err
-	}
-	res.Body.Close()
-	if res.StatusCode == 200 {
-		return nil
-	}
-
-	mapping := `{
+// articlesMapping は articles インデックスの定義。
+// 変更時は新規インデックス作成 + alias swap が必要（未実装）。
+const articlesMapping = `{
   "settings": {
     "analysis": {
       "analyzer": {
@@ -89,10 +39,20 @@ func (s *Store) EnsureIndex(ctx context.Context) error {
   }
 }`
 
+func (s *Store) EnsureIndex(ctx context.Context) error {
+	res, err := s.client.Indices.Exists([]string{articlesIndex}, s.client.Indices.Exists.WithContext(ctx))
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	if res.StatusCode == 200 {
+		return nil
+	}
+
 	create, err := s.client.Indices.Create(
-		indexName,
+		articlesIndex,
 		s.client.Indices.Create.WithContext(ctx),
-		s.client.Indices.Create.WithBody(strings.NewReader(mapping)),
+		s.client.Indices.Create.WithBody(strings.NewReader(articlesMapping)),
 	)
 	if err != nil {
 		return err
@@ -105,7 +65,7 @@ func (s *Store) EnsureIndex(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) BulkUpsert(ctx context.Context, articles []article.Article) error {
+func (s *Store) BulkUpsert(ctx context.Context, articles []domain.Article) error {
 	if len(articles) == 0 {
 		return nil
 	}
@@ -113,7 +73,7 @@ func (s *Store) BulkUpsert(ctx context.Context, articles []article.Article) erro
 	var buf bytes.Buffer
 	for _, a := range articles {
 		meta, err := json.Marshal(map[string]any{
-			"index": map[string]any{"_index": indexName, "_id": a.ID},
+			"index": map[string]any{"_index": articlesIndex, "_id": a.ID},
 		})
 		if err != nil {
 			return err
@@ -140,51 +100,51 @@ func (s *Store) BulkUpsert(ctx context.Context, articles []article.Article) erro
 	return nil
 }
 
-type esHit struct {
-	Source article.Article `json:"_source"`
+type articleHit struct {
+	Source domain.Article `json:"_source"`
 }
 
-type esSearchResponse struct {
+type articleSearchResponse struct {
 	Hits struct {
-		Hits []esHit `json:"hits"`
+		Hits []articleHit `json:"hits"`
 	} `json:"hits"`
 }
 
-func (s *Store) Search(ctx context.Context, query string) ([]article.Article, error) {
-	var body map[string]any
+func articleSearchBody(query string) map[string]any {
 	if strings.TrimSpace(query) == "" {
-		body = map[string]any{
+		return map[string]any{
 			"size": 50,
 			"sort": []any{map[string]any{"published_at": map[string]any{"order": "desc"}}},
 			"query": map[string]any{
 				"match_all": map[string]any{},
 			},
 		}
-	} else {
-		body = map[string]any{
-			"size": 50,
-			"sort": []any{
-				map[string]any{"_score": map[string]any{"order": "desc"}},
-				map[string]any{"published_at": map[string]any{"order": "desc"}},
-			},
-			"query": map[string]any{
-				"multi_match": map[string]any{
-					"query":    query,
-					"fields":   []string{"title^2", "summary"},
-					"analyzer": "ja_analyzer",
-				},
-			},
-		}
 	}
+	return map[string]any{
+		"size": 50,
+		"sort": []any{
+			map[string]any{"_score": map[string]any{"order": "desc"}},
+			map[string]any{"published_at": map[string]any{"order": "desc"}},
+		},
+		"query": map[string]any{
+			"multi_match": map[string]any{
+				"query":    query,
+				"fields":   []string{"title^2", "summary"},
+				"analyzer": "ja_analyzer",
+			},
+		},
+	}
+}
 
-	payload, err := json.Marshal(body)
+func (s *Store) Search(ctx context.Context, query string) ([]domain.Article, error) {
+	payload, err := json.Marshal(articleSearchBody(query))
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := s.client.Search(
 		s.client.Search.WithContext(ctx),
-		s.client.Search.WithIndex(indexName),
+		s.client.Search.WithIndex(articlesIndex),
 		s.client.Search.WithBody(bytes.NewReader(payload)),
 	)
 	if err != nil {
@@ -196,12 +156,12 @@ func (s *Store) Search(ctx context.Context, query string) ([]article.Article, er
 		return nil, fmt.Errorf("search: %s", raw)
 	}
 
-	var parsed esSearchResponse
+	var parsed articleSearchResponse
 	if err := json.NewDecoder(res.Body).Decode(&parsed); err != nil {
 		return nil, err
 	}
 
-	articles := make([]article.Article, 0, len(parsed.Hits.Hits))
+	articles := make([]domain.Article, 0, len(parsed.Hits.Hits))
 	for _, hit := range parsed.Hits.Hits {
 		articles = append(articles, hit.Source)
 	}
