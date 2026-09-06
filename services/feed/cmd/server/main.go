@@ -7,10 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/nnf3/tech-feed/services/feed/internal/article"
-	"github.com/nnf3/tech-feed/services/feed/internal/crawler"
-	"github.com/nnf3/tech-feed/services/feed/internal/httpserver"
-	"github.com/nnf3/tech-feed/services/feed/internal/search"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/es"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/httpserver"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/ranking"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/zenn"
+	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 		addr = ":8080"
 	}
 
-	store, err := search.New(esHost)
+	store, err := es.New(esHost)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,28 +37,21 @@ func main() {
 	}
 	cancel()
 
-	zenn := crawler.NewZenn(os.Getenv("ZENN_FEED_URL"))
-	ingest := func(ctx context.Context) ([]article.Article, error) {
-		items, err := zenn.Fetch()
-		if err != nil {
-			return nil, err
-		}
-		if err := store.BulkUpsert(ctx, items); err != nil {
-			return nil, err
-		}
-		log.Printf("ingested %d articles from zenn", len(items))
-		return items, nil
-	}
+	ingest := usecase.NewIngest(store, zenn.New(os.Getenv("ZENN_FEED_URL")))
+	list := usecase.NewListFeed(store, ranking.PublishedAt{})
 
 	go func() {
 		ingestCtx, ingestCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer ingestCancel()
-		if _, err := ingest(ingestCtx); err != nil {
+		items, err := ingest.Run(ingestCtx)
+		if err != nil {
 			log.Printf("startup ingest skipped: %v", err)
+			return
 		}
+		log.Printf("ingested %d articles from zenn", len(items))
 	}()
 
-	srv := httpserver.New(store, ingest)
+	srv := httpserver.New(list, ingest)
 	log.Printf("feed listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
 		log.Fatal(err)

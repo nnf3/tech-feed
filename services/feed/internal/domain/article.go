@@ -1,6 +1,10 @@
-package article
+package domain
 
-import "time"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"time"
+)
 
 type Article struct {
 	ID          string    `json:"id"`
@@ -10,4 +14,9 @@ type Article struct {
 	Summary     string    `json:"summary"`
 	Tags        []string  `json:"tags"`
 	PublishedAt time.Time `json:"published_at"`
+}
+
+func IDFromURL(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:16])
 }

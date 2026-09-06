@@ -1,38 +1,37 @@
-package crawler
+package zenn
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 	"html"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/mmcdole/gofeed"
-	"github.com/nnf3/tech-feed/services/feed/internal/article"
+	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 )
 
 var htmlTag = regexp.MustCompile(`<[^>]+>`)
 
-type Zenn struct {
+type Source struct {
 	URL    string
 	parser *gofeed.Parser
 }
 
-func NewZenn(feedURL string) *Zenn {
+func New(feedURL string) *Source {
 	if feedURL == "" {
 		feedURL = "https://zenn.dev/feed"
 	}
-	return &Zenn{URL: feedURL, parser: gofeed.NewParser()}
+	return &Source{URL: feedURL, parser: gofeed.NewParser()}
 }
 
-func (z *Zenn) Fetch() ([]article.Article, error) {
-	feed, err := z.parser.ParseURL(z.URL)
+func (z *Source) Fetch(ctx context.Context) ([]domain.Article, error) {
+	feed, err := z.parser.ParseURLWithContext(z.URL, ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]article.Article, 0, len(feed.Items))
+	out := make([]domain.Article, 0, len(feed.Items))
 	for _, item := range feed.Items {
 		if item.Link == "" || item.Title == "" {
 			continue
@@ -49,8 +48,8 @@ func (z *Zenn) Fetch() ([]article.Article, error) {
 			tags = []string{}
 		}
 
-		out = append(out, article.Article{
-			ID:          idFromURL(item.Link),
+		out = append(out, domain.Article{
+			ID:          domain.IDFromURL(item.Link),
 			Source:      "zenn",
 			URL:         item.Link,
 			Title:       strings.TrimSpace(item.Title),
@@ -60,11 +59,6 @@ func (z *Zenn) Fetch() ([]article.Article, error) {
 		})
 	}
 	return out, nil
-}
-
-func idFromURL(raw string) string {
-	sum := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(sum[:16])
 }
 
 func summarize(raw string) string {

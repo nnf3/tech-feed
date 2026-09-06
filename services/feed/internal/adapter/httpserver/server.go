@@ -7,20 +7,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nnf3/tech-feed/services/feed/internal/article"
-	"github.com/nnf3/tech-feed/services/feed/internal/ranking"
-	"github.com/nnf3/tech-feed/services/feed/internal/search"
+	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
-type ingestFunc func(ctx context.Context) ([]article.Article, error)
-
 type Server struct {
-	store  *search.Store
-	ingest ingestFunc
+	list   *usecase.ListFeed
+	ingest *usecase.Ingest
 }
 
-func New(store *search.Store, ingest ingestFunc) *Server {
-	return &Server{store: store, ingest: ingest}
+func New(list *usecase.ListFeed, ingest *usecase.Ingest) *Server {
+	return &Server{list: list, ingest: ingest}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -39,15 +35,11 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	query := r.URL.Query().Get("q")
-	items, err := s.store.Search(ctx, query)
+	items, err := s.list.Run(ctx, r.URL.Query().Get("q"))
 	if err != nil {
-		log.Printf("search: %v", err)
+		log.Printf("list feed: %v", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
 		return
-	}
-	if query == "" {
-		items = ranking.ByPublishedAt(items)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -59,7 +51,7 @@ func (s *Server) triggerIngest(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	items, err := s.ingest(ctx)
+	items, err := s.ingest.Run(ctx)
 	if err != nil {
 		log.Printf("ingest: %v", err)
 		http.Error(w, "ingest failed", http.StatusBadGateway)
