@@ -5,6 +5,7 @@ import "context"
 // FeedQuery は一覧 / 検索の条件。プロフィールのタグは ES の must / should に載せる。
 type FeedQuery struct {
 	Text         string
+	FilterTags   []string
 	InterestTags []string
 	ExcludeTags  []string
 }

@@ -1,6 +1,6 @@
 import { refreshFeed } from "./actions";
 import { Header } from "@/components/Header";
-import { Tags } from "@/components/Tags";
+import { Tags, tagHref } from "@/components/Tags";
 import { getSession } from "@/lib/auth/session";
 import { listArticles } from "@/lib/feed";
 import { getProfile } from "@/lib/profiles";
@@ -22,16 +22,16 @@ function formatDate(value: string) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; auth_error?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; auth_error?: string }>;
 }) {
-  const { q = "", auth_error: authError = "" } = await searchParams;
+  const { q = "", tag = "", auth_error: authError = "" } = await searchParams;
   const session = await getSession();
   const interest = session ? (await getProfile(session.sub)).interest_tags : [];
   let articles = [] as Awaited<ReturnType<typeof listArticles>>;
   let error = "";
 
   try {
-    articles = await listArticles(q, session?.sub ?? "");
+    articles = await listArticles(q, session?.sub ?? "", tag);
   } catch (err) {
     error = err instanceof Error ? err.message : "failed to load feed";
   }
@@ -47,6 +47,7 @@ export default async function HomePage({
             placeholder="キーワード"
             aria-label="記事を検索"
           />
+          {tag ? <input type="hidden" name="tag" value={tag} /> : null}
           <button type="submit">検索</button>
         </form>
         <form action={refreshFeed}>
@@ -59,22 +60,36 @@ export default async function HomePage({
         {error
           ? `読み込みに失敗しました: ${error}`
           : `${articles.length} 件 · Zenn RSS${session ? " · プロフィール反映" : ""}`}
+        {tag ? (
+          <>
+            {" · "}
+            <a className="tag-filter" href={tagHref(tag, q, tag)}>
+              タグ {tag} を解除
+            </a>
+          </>
+        ) : null}
       </p>
 
       {articles.length === 0 && !error ? (
-        <div className="empty">まだ記事がありません。再取得を押すか、少し待って更新してください。</div>
+        <div className="empty">
+          {tag
+            ? `タグ「${tag}」の記事はありません。タグを外すか、再取得してください。`
+            : "まだ記事がありません。再取得を押すか、少し待って更新してください。"}
+        </div>
       ) : (
         <section className="list">
           {articles.map((article) => (
-            <a key={article.id} className="card" href={article.url} target="_blank" rel="noreferrer">
-              <div className="card-top">
-                <span className="source">{article.source}</span>
-                <span>{formatDate(article.published_at)}</span>
-              </div>
-              <h2>{article.title}</h2>
-              {article.summary ? <p>{article.summary}</p> : null}
-              <Tags tags={article.tags ?? []} interest={interest} />
-            </a>
+            <article key={article.id} className="card">
+              <a className="card-body" href={article.url} target="_blank" rel="noreferrer">
+                <div className="card-top">
+                  <span className="source">{article.source}</span>
+                  <span>{formatDate(article.published_at)}</span>
+                </div>
+                <h2>{article.title}</h2>
+                {article.summary ? <p>{article.summary}</p> : null}
+              </a>
+              <Tags tags={article.tags ?? []} interest={interest} active={tag} query={q} links />
+            </article>
           ))}
         </section>
       )}

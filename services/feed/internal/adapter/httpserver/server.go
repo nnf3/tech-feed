@@ -43,7 +43,7 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	items, err := s.list.Run(ctx, r.URL.Query().Get("q"), r.URL.Query().Get("user_id"))
+	items, err := s.list.Run(ctx, r.URL.Query().Get("q"), r.URL.Query().Get("user_id"), r.URL.Query().Get("tag"))
 	if err != nil {
 		log.Printf("list feed: %v", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
