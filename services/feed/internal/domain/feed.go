@@ -8,9 +8,12 @@ import (
 )
 
 const (
-	FeedPageSize    = 20
-	SortNew         = "new"
-	SortRecommended = "recommended"
+	FeedPageSize             = 20
+	SortNew                  = "new"
+	SortRecommended          = "recommended"
+	RecommendHistoryLookback = 40
+	RecommendTagLimit        = 16
+	RecommendHistoryViewCap  = 5
 )
 
 type FeedPage struct {
