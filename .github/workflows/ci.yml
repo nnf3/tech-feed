@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  feed:
+    name: feed tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/feed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/feed/go.mod
+          cache-dependency-path: services/feed/go.sum
+      - run: go test ./...

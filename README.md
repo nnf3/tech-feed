@@ -13,7 +13,7 @@ docker compose up --build
 - Elasticsearch: http://localhost:9200
 - Postgres: localhost:5433（5432 は nnf3-idp と衝突するため。ユーザー / プロフィール用。記事検索は ES）
 
-起動時に [Zenn RSS](https://zenn.dev/feed) を取り込み、トップページに一覧します。
+起動時に [Zenn RSS](https://zenn.dev/feed) を取り込み、各記事のトピックは `https://zenn.dev/api/articles/{slug}` から補完してトップページに一覧します。
 
 ログインは [nnf3-idp](https://github.com/nnf3/nnf3-idp) の Hydra を使います。ブラウザは `http://localhost:3001` ではなく **`http://127.0.0.1:3001`** で開いてください。
 
