@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/feedutil"
 	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 )
 
@@ -23,8 +22,6 @@ const (
 	defaultAPIBase = "https://zenn.dev"
 	topicWorkers   = 5
 )
-
-var htmlTag = regexp.MustCompile(`<[^>]+>`)
 
 type Source struct {
 	URL    string
@@ -70,8 +67,8 @@ func (z *Source) Fetch(ctx context.Context) ([]domain.Article, error) {
 			Source:      "zenn",
 			URL:         item.Link,
 			Title:       strings.TrimSpace(item.Title),
-			Summary:     summarize(item.Description),
-			Tags:        normalizeTags(item.Categories),
+			Summary:     feedutil.Summarize(item.Description),
+			Tags:        feedutil.NormalizeTags(item.Categories),
 			PublishedAt: published,
 		})
 	}
@@ -164,7 +161,7 @@ func topicsFromJSON(raw []byte) ([]string, error) {
 	for _, topic := range topics {
 		names = append(names, topic.Name)
 	}
-	return normalizeTags(names), nil
+	return feedutil.NormalizeTags(names), nil
 }
 
 // resourceFromURL は記事 URL から articles/books と slug を取り出す。
@@ -182,31 +179,3 @@ func resourceFromURL(raw string) (kind, slug string, ok bool) {
 	return "", "", false
 }
 
-// normalizeTags は前後空白を落とし、小文字化して重複を除く。
-func normalizeTags(tags []string) []string {
-	seen := make(map[string]struct{}, len(tags))
-	out := make([]string, 0, len(tags))
-	for _, raw := range tags {
-		tag := strings.ToLower(strings.TrimSpace(raw))
-		if tag == "" {
-			continue
-		}
-		if _, ok := seen[tag]; ok {
-			continue
-		}
-		seen[tag] = struct{}{}
-		out = append(out, tag)
-	}
-	return out
-}
-
-// summarize は RSS の description から HTML を除き、180 文字に切る。
-func summarize(raw string) string {
-	text := htmlTag.ReplaceAllString(raw, " ")
-	text = html.UnescapeString(text)
-	text = strings.Join(strings.Fields(text), " ")
-	if len([]rune(text)) > 180 {
-		return string([]rune(text)[:180]) + "…"
-	}
-	return text
-}

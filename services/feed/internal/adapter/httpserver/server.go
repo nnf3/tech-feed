@@ -14,20 +14,18 @@ import (
 
 type Server struct {
 	list     *usecase.ListFeed
-	ingest   *usecase.Ingest
 	users    *usecase.Users
 	profiles *usecase.Profiles
 }
 
-func New(list *usecase.ListFeed, ingest *usecase.Ingest, users *usecase.Users, profiles *usecase.Profiles) *Server {
-	return &Server{list: list, ingest: ingest, users: users, profiles: profiles}
+func New(list *usecase.ListFeed, users *usecase.Users, profiles *usecase.Profiles) *Server {
+	return &Server{list: list, users: users, profiles: profiles}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /articles", s.articles)
-	mux.HandleFunc("POST /ingest", s.triggerIngest)
 	mux.HandleFunc("PUT /users", s.upsertUser)
 	mux.HandleFunc("GET /users/{id}", s.getUser)
 	mux.HandleFunc("GET /users/{id}/profile", s.getProfile)
@@ -53,20 +51,6 @@ func (s *Server) articles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"articles": items,
 	})
-}
-
-func (s *Server) triggerIngest(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	items, err := s.ingest.Run(ctx)
-	if err != nil {
-		log.Printf("ingest: %v", err)
-		http.Error(w, "ingest failed", http.StatusBadGateway)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]any{"ingested": len(items)})
 }
 
 func (s *Server) upsertUser(w http.ResponseWriter, r *http.Request) {

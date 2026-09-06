@@ -30,15 +30,3 @@ export async function listArticles(query = "", userID = "", tag = ""): Promise<A
   const data = (await res.json()) as { articles?: Article[] };
   return data.articles ?? [];
 }
-
-export async function ingestArticles(): Promise<number> {
-  const res = await fetch(new URL("/ingest", feedAPI), {
-    method: "POST",
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`ingest returned ${res.status}`);
-  }
-  const data = (await res.json()) as { ingested?: number };
-  return data.ingested ?? 0;
-}
