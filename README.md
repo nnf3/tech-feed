@@ -8,6 +8,12 @@
 docker compose up --build
 ```
 
+秘密情報はリポジトリ直下の `.env` に置きます。初回は `.env.example` をコピーしてください。`docker compose` は同じディレクトリの `.env` を自動で読みます。
+
+```bash
+cp .env.example .env
+```
+
 - Web: http://localhost:3001（3000 は nnf3-idp の sample-web と衝突するため）
 - Feed API: http://localhost:8080
 - Crawler: http://localhost:8081
@@ -15,6 +21,8 @@ docker compose up --build
 - Postgres: localhost:5433（5432 は nnf3-idp と衝突するため。ユーザー / プロフィール用。記事検索は ES）
 
 `crawler` プロセスが起動時と `CRAWL_INTERVAL`（既定 15 分）ごとに [Zenn RSS](https://zenn.dev/feed) と [Qiita API](https://qiita.com/api/v2/items) を取り込みます。Zenn のトピックは記事詳細 API で補完します。`CRAWL_INTERVAL=0` で定期実行だけ止められます。feed は一覧とユーザーだけを担当します。
+
+`TYPESAFE_API_KEY` があるとき、crawler は取り込み後に [TypeSafe Jev](https://docs.typesafe.ai/introduction) で記事の種別・難易度・品質・宣伝度を付けます。キーは `.env` に書きます。無いときはスキップします。おすすめ一覧では宣伝記事を落とし、品質スコアでブーストします。
 
 ログインは [nnf3-idp](https://github.com/nnf3/nnf3-idp) の Hydra を使います。ブラウザは `http://localhost:3001` ではなく **`http://127.0.0.1:3001`** で開いてください。
 
@@ -29,5 +37,5 @@ IdP 側で登録またはログインすると `http://127.0.0.1:3001/callback` 
 ## 構成
 
 - `apps/web` — Next.js（フロント + BFF）。OIDC セッションと画面。Postgres は触らない
-- `services/feed` — Go。`cmd/server` が一覧とユーザー、`cmd/crawler` が定期収集。記事は Elasticsearch、ユーザーとプロフィールは Postgres
+- `services/feed` — Go。`cmd/server` が一覧とユーザー、`cmd/crawler` が定期収集と TypeSafe による記事判定。記事は Elasticsearch、ユーザーとプロフィールは Postgres
 - `infra/elasticsearch` — Kuromoji + ICU 入り Elasticsearch

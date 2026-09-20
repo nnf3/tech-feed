@@ -9,6 +9,7 @@ import (
 
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/es"
 	"github.com/nnf3/tech-feed/services/feed/internal/adapter/sources"
+	"github.com/nnf3/tech-feed/services/feed/internal/adapter/typesafe"
 	"github.com/nnf3/tech-feed/services/feed/internal/usecase"
 )
 
@@ -35,8 +36,13 @@ func main() {
 	}
 	cancel()
 
-	ingest := usecase.NewIngest(store, sources.All(os.Getenv("ZENN_FEED_URL"), os.Getenv("QIITA_API_URL"))...)
-	crawler := usecase.NewCrawler(ingest, usecase.ParseInterval(os.Getenv("CRAWL_INTERVAL")), time.Minute)
+	enricher := typesafe.NewFromEnv()
+	timeout := time.Minute
+	if os.Getenv("TYPESAFE_API_KEY") != "" {
+		timeout = 3 * time.Minute
+	}
+	ingest := usecase.NewIngest(store, enricher, sources.All(os.Getenv("ZENN_FEED_URL"), os.Getenv("QIITA_API_URL"))...)
+	crawler := usecase.NewCrawler(ingest, usecase.ParseInterval(os.Getenv("CRAWL_INTERVAL")), timeout)
 
 	go func() {
 		mux := http.NewServeMux()

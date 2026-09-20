@@ -58,6 +58,7 @@ services:
       ZENN_FEED_URL: https://zenn.dev/feed
       QIITA_API_URL: https://qiita.com/api/v2/items?per_page=20
       CRAWL_INTERVAL: 15m
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
     volumes:
       - ./services/feed:/src
     ports:
