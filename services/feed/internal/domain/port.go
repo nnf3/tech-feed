@@ -27,6 +27,21 @@ type Source interface {
 	Fetch(ctx context.Context) ([]Article, error)
 }
 
+// ArticleEnricher は記事に kind / level / quality / promo を付ける。
+type ArticleEnricher interface {
+	Enrich(ctx context.Context, articles []Article) ([]Article, error)
+}
+
+type noopArticleEnricher struct{}
+
+func NoopArticleEnricher() ArticleEnricher {
+	return noopArticleEnricher{}
+}
+
+func (noopArticleEnricher) Enrich(_ context.Context, articles []Article) ([]Article, error) {
+	return articles, nil
+}
+
 // UserStore はユーザーの永続化。いまの実装は Postgres。
 type UserStore interface {
 	Upsert(ctx context.Context, user User) error

@@ -11,7 +11,25 @@ export type Article = {
   title_highlighted?: string;
   summary_highlighted?: string;
   tags: string[];
+  kind?: string;
+  level?: string;
+  quality?: number;
+  promo?: boolean;
   published_at: string;
+};
+
+export const articleKindLabel: Record<string, string> = {
+  tutorial: "解説",
+  news: "ニュース",
+  opinion: "意見",
+  release: "リリース",
+  other: "その他",
+};
+
+export const articleLevelLabel: Record<string, string> = {
+  beginner: "入門",
+  intermediate: "実務",
+  advanced: "上級",
 };
 
 export type FeedPage = {

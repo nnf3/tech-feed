@@ -69,6 +69,9 @@ func (s *Store) createIndex(ctx context.Context, name, mapping string) error {
 	defer res.Body.Close()
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
+		if strings.Contains(string(body), "resource_already_exists_exception") {
+			return nil
+		}
 		return fmt.Errorf("create index %s: %s", name, body)
 	}
 	return nil

@@ -216,6 +216,7 @@ input[type="search"]:focus {
 
 .card-top {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   margin-bottom: 8px;
@@ -235,6 +236,19 @@ input[type="search"]:focus {
 
 .source-qiita {
   color: var(--qiita);
+}
+
+.signal {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.signal-promo {
+  border-color: rgba(220, 120, 90, 0.5);
+  color: #e8a090;
 }
 
 .card h2 {
