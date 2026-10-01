@@ -55,7 +55,7 @@ func (s *Store) GetByIDs(ctx context.Context, ids []string) ([]domain.Article, e
 
 	payload, err := json.Marshal(map[string]any{
 		"size":    len(ids),
-		"_source": []string{"id", "tags", "kind", "level", "quality", "promo"},
+		"_source": []string{"id", "tags", "kind", "level", "quality", "promo", "enriched_at"},
 		"query":   map[string]any{"ids": map[string]any{"values": ids}},
 	})
 	if err != nil {

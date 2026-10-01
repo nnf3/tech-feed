@@ -158,5 +158,7 @@ func (c *Client) evaluate(ctx context.Context, article domain.Article) (domain.A
 		return article, fmt.Errorf("decode typesafe response: %w", err)
 	}
 	applyAnswers(&article, resp, c.minConfidence, c.promoThreshold)
+	now := time.Now().UTC()
+	article.EnrichedAt = &now
 	return article, nil
 }
