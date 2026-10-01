@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/nnf3/tech-feed/services/feed/internal/domain"
 )
@@ -43,12 +44,16 @@ func (s *ingestIndex) Search(context.Context, domain.FeedQuery) (domain.FeedPage
 type stubEnricher struct {
 	kind string
 	err  error
+	seen *[]string
 }
 
 func (s stubEnricher) Enrich(_ context.Context, articles []domain.Article) ([]domain.Article, error) {
 	out := append([]domain.Article(nil), articles...)
-	if s.kind != "" {
-		for i := range out {
+	for i := range out {
+		if s.seen != nil {
+			*s.seen = append(*s.seen, out[i].ID)
+		}
+		if s.kind != "" {
 			out[i].Kind = s.kind
 			out[i].Promo = false
 		}
@@ -56,38 +61,48 @@ func (s stubEnricher) Enrich(_ context.Context, articles []domain.Article) ([]do
 	return out, s.err
 }
 
-func TestIngestRestoresThenEnriches(t *testing.T) {
+func TestIngestRestoresAndEnrichesOnlyPending(t *testing.T) {
 	q := 0.2
+	at := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	index := &ingestIndex{docs: map[string]domain.Article{
-		"a1": {ID: "a1", Kind: domain.ArticleKindNews, Level: domain.ArticleLevelAdvanced, Quality: &q, Promo: true},
+		"a1": {ID: "a1", Kind: domain.ArticleKindNews, Level: domain.ArticleLevelAdvanced, Quality: &q, EnrichedAt: &at},
 	}}
-	u := NewIngest(index, stubEnricher{kind: domain.ArticleKindTutorial}, stubSource{items: []domain.Article{
+	var seen []string
+	u := NewIngest(index, stubEnricher{kind: domain.ArticleKindTutorial, seen: &seen}, stubSource{items: []domain.Article{
 		{ID: "a1", Title: "fresh"},
+		{ID: "a2", Title: "new"},
 	}})
 
 	got, err := u.Run(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].Title != "fresh" {
+	if len(seen) != 1 || seen[0] != "a2" {
+		t.Fatalf("enriched ids: %v", seen)
+	}
+	if len(got) != 2 || got[0].Title != "fresh" || got[1].Title != "new" {
 		t.Fatalf("content: %#v", got)
 	}
-	if got[0].Kind != domain.ArticleKindTutorial {
-		t.Fatalf("kind: %#v", got[0])
-	}
-	if got[0].Level != domain.ArticleLevelAdvanced || got[0].Quality == nil || *got[0].Quality != 0.2 {
+	if got[0].Kind != domain.ArticleKindNews || got[0].Level != domain.ArticleLevelAdvanced || got[0].Quality == nil || *got[0].Quality != 0.2 {
 		t.Fatalf("kept previous signals: %#v", got[0])
 	}
-	if len(index.upsert) != 1 || index.upsert[0].Kind != domain.ArticleKindTutorial {
+	if got[0].EnrichedAt == nil || !got[0].EnrichedAt.Equal(at) {
+		t.Fatalf("enriched_at: %#v", got[0].EnrichedAt)
+	}
+	if got[1].Kind != domain.ArticleKindTutorial {
+		t.Fatalf("new article kind: %#v", got[1])
+	}
+	if len(index.upsert) != 2 || index.upsert[1].Kind != domain.ArticleKindTutorial {
 		t.Fatalf("upsert: %#v", index.upsert)
 	}
 }
 
-func TestIngestKeepsSignalsWhenEnrichFails(t *testing.T) {
+func TestIngestSkipsLegacySignalsWithoutEnrichedAt(t *testing.T) {
 	index := &ingestIndex{docs: map[string]domain.Article{
-		"a1": {ID: "a1", Kind: domain.ArticleKindOpinion, Promo: true},
+		"a1": {ID: "a1", Kind: domain.ArticleKindOpinion},
 	}}
-	u := NewIngest(index, stubEnricher{err: context.DeadlineExceeded}, stubSource{items: []domain.Article{
+	var seen []string
+	u := NewIngest(index, stubEnricher{kind: domain.ArticleKindTutorial, seen: &seen}, stubSource{items: []domain.Article{
 		{ID: "a1", Title: "fresh"},
 	}})
 
@@ -95,9 +110,33 @@ func TestIngestKeepsSignalsWhenEnrichFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got[0].Kind != domain.ArticleKindOpinion || !got[0].Promo {
+	if len(seen) != 0 {
+		t.Fatalf("legacy article re-enriched: %v", seen)
+	}
+	if got[0].Kind != domain.ArticleKindOpinion {
 		t.Fatalf("wanted previous signals: %#v", got[0])
 	}
+}
+
+func TestIngestKeepsArticlesWhenEnrichFails(t *testing.T) {
+	index := &ingestIndex{}
+	u := NewIngest(index, failingEnricher{}, stubSource{items: []domain.Article{
+		{ID: "a1", Title: "fresh"},
+	}})
+
+	got, err := u.Run(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Title != "fresh" || got[0].Kind != "" {
+		t.Fatalf("wanted original article: %#v", got)
+	}
+}
+
+type failingEnricher struct{}
+
+func (failingEnricher) Enrich(context.Context, []domain.Article) ([]domain.Article, error) {
+	return nil, context.DeadlineExceeded
 }
 
 func TestIngestUsesPartialEnrichmentOnError(t *testing.T) {

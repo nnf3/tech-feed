@@ -8,7 +8,7 @@ import (
 
 const (
 	articlesAlias   = "articles"
-	articlesVersion = 3
+	articlesVersion = 4
 )
 
 // articlesMapping は実インデックスの定義。
@@ -37,6 +37,7 @@ const articlesMapping = `{
       "level": { "type": "keyword" },
       "quality": { "type": "float" },
       "promo": { "type": "boolean" },
+      "enriched_at": { "type": "date" },
       "published_at": { "type": "date" }
     }
   }

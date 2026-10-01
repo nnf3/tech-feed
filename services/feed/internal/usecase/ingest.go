@@ -41,18 +41,39 @@ func (u *Ingest) Run(ctx context.Context) ([]domain.Article, error) {
 	}
 
 	all = u.restoreSignals(ctx, all)
-	enriched, err := u.enricher.Enrich(ctx, all)
-	if err != nil {
-		log.Printf("enrich articles skipped: %v", err)
-	}
-	if len(enriched) > 0 {
-		all = enriched
-	}
+	all = u.enrichPending(ctx, all)
 
 	if err := u.index.BulkUpsert(ctx, all); err != nil {
 		return nil, fmt.Errorf("upsert articles: %w", err)
 	}
 	return all, nil
+}
+
+// enrichPending は判定済みの記事を除いて enricher に渡す。再クロールのたびに API を呼ばないため。
+func (u *Ingest) enrichPending(ctx context.Context, articles []domain.Article) []domain.Article {
+	var pending []int
+	var targets []domain.Article
+	for i, article := range articles {
+		if article.NeedsEnrichment() {
+			pending = append(pending, i)
+			targets = append(targets, article)
+		}
+	}
+	if len(targets) == 0 {
+		return articles
+	}
+
+	enriched, err := u.enricher.Enrich(ctx, targets)
+	if err != nil {
+		log.Printf("enrich articles skipped: %v", err)
+	}
+	if len(enriched) != len(targets) {
+		return articles
+	}
+	for j, i := range pending {
+		articles[i] = enriched[j]
+	}
+	return articles
 }
 
 // restoreSignals は再クロールで判定が落ちても、前回の kind / level などを残す。

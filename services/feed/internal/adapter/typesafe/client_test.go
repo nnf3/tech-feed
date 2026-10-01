@@ -66,4 +66,7 @@ func TestClientEnrich(t *testing.T) {
 	if got[0].Quality == nil || *got[0].Quality != 1.7 {
 		t.Fatalf("quality %#v", got[0].Quality)
 	}
+	if got[0].EnrichedAt == nil {
+		t.Fatalf("enriched_at not set: %#v", got[0])
+	}
 }
